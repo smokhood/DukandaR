@@ -50,10 +50,7 @@ export { app };
     } from 'firebase/firestore';
 
 // Re-export Firebase Auth functions
-export {
-    onAuthStateChanged, PhoneAuthProvider,
-    signInWithCredential, signInWithPhoneNumber, signOut
-} from 'firebase/auth';
+export { onAuthStateChanged, PhoneAuthProvider, signInWithCredential, signInWithPhoneNumber, signOut } from 'firebase/auth';
 
 // Re-export Firebase Storage functions
 export {

@@ -3,21 +3,19 @@ import { z } from 'zod';
 
 /**
  * Pakistani phone number validation
- * Accepts: 03XXXXXXXXX or +923XXXXXXXXX
+ * Accepts 10 digits starting with 3 (e.g., 3001234567)
+ * The "+92" is added in the UI and formatPhone function
  */
 export const pakistaniPhoneSchema = z
   .string()
   .refine(
     (val) => {
       const digits = val.replace(/\D/g, '');
-      // Must be 11 digits starting with 03, or 13 chars starting with +923
-      return (
-        (digits.length === 11 && digits.startsWith('03')) ||
-        (digits.length === 12 && digits.startsWith('923'))
-      );
+      // Must be 10 digits starting with 3
+      return digits.length === 10 && digits.startsWith('3');
     },
     {
-      message: 'Valid Pakistani number daalen (03XX-XXXXXXX)',
+      message: 'Valid Pakistani number daalen (3XX-XXXXXXX)',
     }
   );
 

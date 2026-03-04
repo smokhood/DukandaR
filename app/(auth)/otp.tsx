@@ -218,7 +218,7 @@ export default function OTPScreen() {
                 <Text className="text-lg mr-2">🇵🇰 +92</Text>
                 <TextInput
                   className="flex-1 text-lg"
-                  placeholder="300 1234567"
+                  placeholder="3001234567"
                   keyboardType="phone-pad"
                   maxLength={10}
                   value={phone}

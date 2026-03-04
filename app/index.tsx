@@ -57,7 +57,7 @@ export default function SplashScreen() {
             if (user.role === 'owner') {
               router.replace('/(owner)/dashboard');
             } else {
-              router.replace('/(customer)/home');
+              router.replace('/(customer)');
             }
           }
         }

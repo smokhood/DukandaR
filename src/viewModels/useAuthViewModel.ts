@@ -48,20 +48,43 @@ export function useAuthViewModel() {
       // Validate and format phone
       const validation = pakistaniPhoneSchema.safeParse(phone);
       if (!validation.success) {
-        throw new Error('Valid Pakistani number daalen (03XX-XXXXXXX)');
+        throw new Error('Valid Pakistani number daalen (3XX-XXXXXXX)');
       }
 
       const formattedPhone = formatPhone(phone);
       setPhoneNumber(formattedPhone);
 
       // In development/Expo Go, Firebase Phone Auth requires reCAPTCHA
-      // which doesn't work in React Native. You'll need to use a dev build
-      // or Firebase Auth emulator for testing.
+      // which doesn't work in React Native. For MVP testing, use mock OTP.
       // For production, this will work fine.
-
-      // Note: signInWithPhoneNumber requires a RecaptchaVerifier in web context
-      // In React Native, it needs proper setup. For MVP, we'll handle the error gracefully.
       
+      if (__DEV__) {
+        // Development: Use mock OTP for testing
+        const testOtp = '123456'; // Test code
+        console.log('🧪 DEV MODE: Test OTP is:', testOtp);
+        
+        // Create mock confirmation result
+        const mockConfirmation = {
+          confirm: async (otp: string) => {
+            if (otp === testOtp) {
+              return {
+                user: {
+                  uid: 'test-user-' + Date.now(),
+                  phoneNumber: formattedPhone,
+                },
+              };
+            }
+            throw new Error('غلط OTP');
+          },
+        };
+        
+        confirmationResultRef.current = mockConfirmation as any;
+        setOtpSent(true);
+        setCountdown(60);
+        return;
+      }
+
+      // Production: Use real Firebase Phone Auth
       try {
         const confirmation = await signInWithPhoneNumber(
           auth,
@@ -116,22 +139,43 @@ export function useAuthViewModel() {
         const userCredential = await confirmationResultRef.current.confirm(otp);
         const firebaseUser = userCredential.user;
 
-        // Check if user exists in Firestore
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDoc = await getDoc(userDocRef);
+        // In development with mock OTP, create mock user without Firestore
+        if (__DEV__ && !firebaseUser.uid.includes('test-user-')) {
+          // Production path - real Firebase user
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          const userDoc = await getDoc(userDocRef);
 
-        let userData: User;
+          let userData: User;
 
-        if (userDoc.exists()) {
-          // Existing user
-          userData = userDoc.data() as User;
+          if (userDoc.exists()) {
+            // Existing user
+            userData = userDoc.data() as User;
+          } else {
+            // New user - create document
+            userData = {
+              id: firebaseUser.uid,
+              phone: phoneNumber,
+              name: '',
+              role: 'customer',
+              shopId: null,
+              savedShops: [],
+              isOnboarded: false,
+              preferredLanguage: 'ur',
+              createdAt: new Date() as any,
+              updatedAt: new Date() as any,
+            };
+
+            await setDoc(userDocRef, userData);
+          }
+
+          setUser(userData);
         } else {
-          // New user - create document
-          userData = {
+          // Development path with mock OTP - don't access Firestore
+          const mockUser: User = {
             id: firebaseUser.uid,
             phone: phoneNumber,
             name: '',
-            role: 'customer', // Default, will be updated in role selection
+            role: 'customer',
             shopId: null,
             savedShops: [],
             isOnboarded: false,
@@ -140,11 +184,8 @@ export function useAuthViewModel() {
             updatedAt: new Date() as any,
           };
 
-          await setDoc(userDocRef, userData);
+          setUser(mockUser);
         }
-
-        // Update auth store
-        setUser(userData);
 
         // Clear confirmation result
         confirmationResultRef.current = null;

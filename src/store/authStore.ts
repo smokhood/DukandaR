@@ -55,7 +55,7 @@ export const useAuthStore = create<AuthStore>()(
     (set) => ({
       // Initial state
       user: null,
-      isLoading: true,
+      isLoading: false,
       isAuthenticated: false,
       hasCompletedOnboarding: false,
 

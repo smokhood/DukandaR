@@ -89,7 +89,7 @@ export default function RootLayout() {
       if (!user.role || user.role === 'customer') {
         // Customer role
         if (!inCustomerGroup && !inAuthGroup) {
-          router.replace('/(customer)/home');
+          router.replace('/(customer)');
         }
       } else if (user.role === 'owner') {
         // Owner role
