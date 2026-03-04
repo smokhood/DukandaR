@@ -1,23 +1,65 @@
 {
   "expo": {
-    "name": "MyFirstApp",
-    "slug": "MyFirstApp",
+    "name": "DukandaR",
+    "slug": "dukandar",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myfirstapp",
+    "scheme": "dukandar",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "backgroundColor": "#16a34a",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "backgroundColor": "#16a34a",
+      "resizeMode": "contain"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dukandar.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "DukandaR aapki location use karta hai taake aapke qareeb ki dukaanein dhundh sake.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "DukandaR aapki location use karta hai taake aapke qareeb ki dukaanein dhundh sake.",
+        "NSCameraUsageDescription": "Dukaan ki tasveer lene ke liye camera chahiye."
+      }
     },
     "android": {
+      "package": "com.dukandar.app",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#16a34a",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "dukandar"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -28,21 +70,40 @@
     "plugins": [
       "expo-router",
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "DukandaR aapki location use karta hai taake aapke qareeb ki dukaanein dhundh sake."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Dukaan ki tasveer lene ke liye camera chahiye."
+        }
+      ],
+      "expo-notifications",
+      "expo-local-authentication",
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+          "backgroundColor": "#16a34a"
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-localization",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id-here"
+      }
     }
   }
 }

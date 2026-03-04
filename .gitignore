@@ -8,6 +8,7 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+build/
 
 # Native
 .kotlin/
@@ -31,6 +32,9 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.local
+.env.production
 .env*.local
 
 # typescript
@@ -41,3 +45,7 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Firebase config files (contains sensitive keys)
+google-services.json
+GoogleService-Info.plist
