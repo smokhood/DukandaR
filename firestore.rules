@@ -1,0 +1,114 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isShopOwner(shopOwnerId) {
+      return isAuthenticated() && request.auth.uid == shopOwnerId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Users can only read/write their own data
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Shops collection
+    match /shops/{shopId} {
+      // Anyone can read active shops
+      allow read: if resource.data.isActive == true;
+      
+      // Only shop owner can write
+      allow create: if isAuthenticated();
+      allow update, delete: if isShopOwner(resource.data.ownerId);
+      
+      // Validate shop data on write
+      allow write: if request.resource.data.keys().hasAll([
+        'name', 'ownerName', 'ownerId', 'category', 'whatsapp',
+        'location', 'isOpen', 'hours', 'isActive'
+      ]);
+    }
+    
+    // Products collection
+    match /products/{productId} {
+      // Anyone can read active products
+      allow read: if resource.data.isActive == true;
+      
+      // Get shop owner from shop document
+      function getShopOwnerId() {
+        return get(/databases/$(database)/documents/shops/$(resource.data.shopId)).data.ownerId;
+      }
+      
+      // Only shop owner can write products
+      allow create: if isAuthenticated();
+      allow update, delete: if isShopOwner(getShopOwnerId());
+      
+      // Validate product data
+      allow write: if request.resource.data.keys().hasAll([
+        'shopId', 'name', 'category', 'price', 'unit', 'inStock', 'isActive'
+      ]) && request.resource.data.price > 0;
+    }
+    
+    // Deals collection
+    match /deals/{dealId} {
+      // Anyone can read active, non-expired deals
+      allow read: if resource.data.isActive == true 
+                  && resource.data.expiresAt > request.time;
+      
+      // Get shop owner from shop document
+      function getDealShopOwnerId() {
+        return get(/databases/$(database)/documents/shops/$(resource.data.shopId)).data.ownerId;
+      }
+      
+      // Only shop owner can write deals
+      allow create: if isAuthenticated();
+      allow update, delete: if isShopOwner(getDealShopOwnerId());
+      
+      // Validate deal data
+      allow write: if request.resource.data.keys().hasAll([
+        'shopId', 'shopName', 'productName', 'originalPrice', 'dealPrice'
+      ]) && request.resource.data.dealPrice < request.resource.data.originalPrice;
+    }
+    
+    // Searches collection (for demand tracking)
+    match /searches/{searchId} {
+      // No one can read searches (analytics only)
+      allow read: if false;
+      
+      // Authenticated users can create search records
+      allow create: if isAuthenticated();
+      
+      // No updates or deletes
+      allow update, delete: if false;
+    }
+    
+    // Notifications collection
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // System can create notifications
+      allow create: if isAuthenticated();
+      
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // No deletes
+      allow delete: if false;
+    }
+    
+    // Block all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
