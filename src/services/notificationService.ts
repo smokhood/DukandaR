@@ -172,3 +172,78 @@ export async function cancelAllNotifications(): Promise<void> {
     console.error('Cancel all notifications error:', error);
   }
 }
+
+/**
+ * Get user's app notifications from Firestore
+ * @param userId User ID
+ * @returns Array of app notifications
+ */
+export async function getNotifications(userId: string): Promise<any[]> {
+  try {
+    const { collection, query, where, getDocs, orderBy } = await import(
+      'firebase/firestore'
+    );
+    const { db } = await import('@services/firebase');
+
+    const notificationsRef = collection(db, 'notifications');
+    const q = query(
+      notificationsRef,
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    return [];
+  }
+}
+
+/**
+ * Mark notification as read
+ * @param userId User ID
+ * @param notificationId Notification ID
+ */
+export async function markAsRead(
+  userId: string,
+  notificationId: string
+): Promise<void> {
+  try {
+    const { doc, updateDoc } = await import('firebase/firestore');
+    const { db } = await import('@services/firebase');
+
+    const notifRef = doc(db, 'notifications', notificationId);
+    await updateDoc(notifRef, {
+      read: true,
+      readAt: new Date(),
+    });
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    throw error;
+  }
+}
+
+/**
+ * Delete notification
+ * @param userId User ID
+ * @param notificationId Notification ID
+ */
+export async function deleteNotification(
+  userId: string,
+  notificationId: string
+): Promise<void> {
+  try {
+    const { doc, deleteDoc } = await import('firebase/firestore');
+    const { db } = await import('@services/firebase');
+
+    const notifRef = doc(db, 'notifications', notificationId);
+    await deleteDoc(notifRef);
+  } catch (error) {
+    console.error('Error deleting notification:', error);
+    throw error;
+  }
+}

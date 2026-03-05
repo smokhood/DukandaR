@@ -1,24 +1,127 @@
 /**
- * Favourites Screen - Placeholder
- * TODO: Implement FEATURE 09
+ * app/(customer)/favourites.tsx
+ * Saved favorite shops screen
+ * Shows user's favorite shops with swipe-to-remove functionality
  */
-import { Text, View } from 'react-native';
+
+import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    RefreshControl,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { EmptyState } from '../../src/components/EmptyState';
+import { ShopCard } from '../../src/components/ShopCard';
+import { useFavouritesViewModel } from '../../src/viewModels/useFavouritesViewModel';
 
 export default function FavouritesScreen() {
-  return (
-    <View className="flex-1 bg-gray-50">
-      <View className="bg-white px-6 py-4 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-900">پسندیدہ دکانیں</Text>
-      </View>
-      
-      <EmptyState
-        variant="empty_favourites"
-        actionLabel="دکانیں تلاش کریں"
-        onAction={() => {
-          // Navigate to search
+  const router = useRouter();
+  const { favouriteShops, isLoading, isEmpty, removeFavourite, refetch } =
+    useFavouritesViewModel();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setIsRefreshing(false);
+  }, [refetch]);
+
+  const handleRemove = useCallback(
+    async (shopId: string, shopName: string) => {
+      Alert.alert('ہٹائیں', `${shopName} کو پسندیدہ سے نکالیں؟`, [
+        { text: 'منسوخ', style: 'cancel' },
+        {
+          text: 'ہٹائیں',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeFavourite(shopId);
+            } catch (error) {
+              Alert.alert('خرابی', 'ہٹانے میں خرابی');
+            }
+          },
+        },
+      ]);
+    },
+    [removeFavourite]
+  );
+
+  const renderRightActions = (shopId: string, shopName: string) => (
+    <TouchableOpacity
+      className="bg-red-500 w-20 flex items-center justify-center"
+      onPress={() => handleRemove(shopId, shopName)}
+    >
+      <Text className="text-white font-semibold text-sm">ہٹائیں</Text>
+    </TouchableOpacity>
+  );
+
+  const renderShop = ({ item: shop }: any) => (
+    <Swipeable
+      renderRightActions={() => renderRightActions(shop.id, shop.name)}
+      overshootRight={false}
+    >
+      <ShopCard
+        shop={shop}
+        onPress={() => router.push(`/(customer)/shop/${shop.id}`)}
+        onWhatsAppPress={() => {
+          // WhatsApp button handler
+          console.log('WhatsApp button for shop:', shop.id);
         }}
       />
+    </Swipeable>
+  );
+
+  return (
+    <View className="flex-1 bg-gray-50">
+      {/* Header */}
+      <View className="bg-white px-6 py-4 border-b border-gray-200">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-2xl font-bold text-gray-900">
+            پسندیدہ دکانیں
+          </Text>
+          {!isEmpty && (
+            <View className="bg-green-100 px-3 py-1 rounded-full">
+              <Text className="text-xs font-semibold text-green-700">
+                {favouriteShops.length}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Content */}
+      {isLoading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#16a34a" />
+        </View>
+      ) : isEmpty ? (
+        <EmptyState
+          variant="empty_favourites"
+          actionLabel="دکانیں تلاش کریں"
+          onAction={() => router.push('/(customer)')}
+        />
+      ) : (
+        <FlatList
+          data={favouriteShops}
+          renderItem={renderShop}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+          scrollEnabled={true}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor="#16a34a"
+            />
+          }
+        />
+      )}
     </View>
   );
 }

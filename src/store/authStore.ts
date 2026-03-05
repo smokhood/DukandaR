@@ -18,6 +18,7 @@ interface AuthActions {
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
   setOnboarded: () => void;
+  markOnboarded: () => Promise<void>; // Mark onboarded in Firestore
   clearUser: () => void;
   resetAuthState: () => Promise<void>; // Development only
   logAuthState: () => void; // Development only
@@ -84,6 +85,32 @@ export const useAuthStore = create<AuthStore>()(
           user: state.user ? { ...state.user, isOnboarded: true } : null,
           hasCompletedOnboarding: true,
         })),
+
+      markOnboarded: async () => {
+        const state = get();
+        if (!state.user?.id) return;
+
+        try {
+          // Update Firestore
+          const { doc, updateDoc } = await import('firebase/firestore');
+          const { db } = await import('@services/firebase');
+          
+          const userRef = doc(db, 'users', state.user.id);
+          await updateDoc(userRef, {
+            isOnboarded: true,
+            updatedAt: new Date(),
+          });
+
+          // Update local state
+          set((st) => ({
+            user: st.user ? { ...st.user, isOnboarded: true } : null,
+            hasCompletedOnboarding: true,
+          }));
+        } catch (error) {
+          console.error('Error marking onboarded:', error);
+          throw error;
+        }
+      },
 
       clearUser: () =>
         set({

@@ -102,14 +102,17 @@ export default function RootLayout() {
     const inAuthGroup = segments[0] === '(auth)';
     const inCustomerGroup = segments[0] === '(customer)';
     const inOwnerGroup = segments[0] === '(owner)';
+    const inOnboardingGroup = segments[0] === '(onboarding)';
 
     console.log('[Auth Guard] Running', {
       isAuthenticated,
       userRole: user?.role,
+      isOnboarded: user?.isOnboarded,
       currentSegment: segments[0],
       inAuthGroup,
       inCustomerGroup,
       inOwnerGroup,
+      inOnboardingGroup,
     });
 
     if (!isAuthenticated) {
@@ -126,21 +129,27 @@ export default function RootLayout() {
         if (!inAuthGroup) {
           router.replace('/(auth)/role-select');
         }
+      } else if (!user.isOnboarded && !hasCompletedOnboarding) {
+        // Not onboarded → show onboarding
+        console.log('[Redirect] Not onboarded → /(onboarding)');
+        if (!inOnboardingGroup) {
+          router.replace('/(onboarding)');
+        }
       } else if (user.role === 'customer') {
         // Customer role
         console.log('[Redirect] Customer role → /(customer)');
-        if (!inCustomerGroup && !inAuthGroup) {
+        if (!inCustomerGroup && !inAuthGroup && !inOnboardingGroup) {
           router.replace('/(customer)');
         }
       } else if (user.role === 'owner') {
         // Owner role
         console.log('[Redirect] Owner role → /(owner)/dashboard');
-        if (!inOwnerGroup && !inAuthGroup) {
+        if (!inOwnerGroup && !inAuthGroup && !inOnboardingGroup) {
           router.replace('/(owner)/dashboard');
         }
       }
     }
-  }, [isAuthenticated, user, segments, isLoading, fontsLoaded]);
+  }, [isAuthenticated, user, segments, isLoading, fontsLoaded, hasCompletedOnboarding]);
 
   // Show blank screen while fonts/auth loading
   if (!fontsLoaded || isLoading) {
