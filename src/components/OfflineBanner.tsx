@@ -6,8 +6,10 @@ import Animated, {
     useSharedValue,
     withTiming,
 } from 'react-native-reanimated';
+import { useLanguage } from '../hooks/useLanguage';
 
 export function OfflineBanner() {
+  const { t } = useLanguage();
   const [status, setStatus] = useState<'hidden' | 'offline' | 'online'>('hidden');
   const translateY = useSharedValue(-80);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,8 +67,8 @@ export function OfflineBanner() {
       <View className="pt-10">
         <Text className="text-white text-sm font-medium text-center">
           {isOffline
-            ? '📴 آپ آف لائن ہیں — پرانا ڈیٹا دکھایا جا رہا ہے'
-            : '✅ واپس آن لائن'}
+            ? `📴 ${t('customer.no_internet')} - ${t('customer.showing_cached_data')}`
+            : `✅ ${t('customer.back_online')}`}
         </Text>
       </View>
     </Animated.View>

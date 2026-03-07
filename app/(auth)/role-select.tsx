@@ -11,13 +11,14 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
+import { useLanguage } from '../../src/hooks/useLanguage';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function RoleSelectScreen() {
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
-  const [language, setLanguage] = useState<'en' | 'ur'>('ur');
+  const { t, language, setLanguage } = useLanguage();
 
   const customerScale = useSharedValue(1);
   const ownerScale = useSharedValue(1);
@@ -48,12 +49,10 @@ export default function RoleSelectScreen() {
       <View className="flex-[2] items-center justify-center px-6">
         <Ionicons name="bag-handle" size={64} color="white" />
         <Text className="text-white text-4xl font-bold mt-4 text-center">
-          DukandaR
+          {t('common.app_name')}
         </Text>
         <Text className="text-white text-base mt-2 text-center opacity-90">
-          {language === 'ur'
-            ? 'اپنی گلی کی ہر دکان، ایک جگہ'
-            : 'Every shop in your street, one place'}
+          {t('auth.tagline')}
         </Text>
       </View>
 
@@ -81,12 +80,10 @@ export default function RoleSelectScreen() {
               <Ionicons name="cart" size={32} color="#16a34a" />
             </View>
             <Text className="text-base font-semibold text-gray-900 text-center mb-1">
-              {language === 'ur' ? 'میں Customer ہوں' : "I'm a Customer"}
+              {t('auth.i_am_customer')}
             </Text>
             <Text className="text-xs text-gray-600 text-center">
-              {language === 'ur'
-                ? 'قریبی دکانوں سے خریداری کریں'
-                : 'Shop from nearby stores'}
+              {t('auth.shop_from_nearby')}
             </Text>
           </AnimatedPressable>
 
@@ -106,12 +103,10 @@ export default function RoleSelectScreen() {
               <Ionicons name="storefront" size={32} color="#16a34a" />
             </View>
             <Text className="text-base font-semibold text-gray-900 text-center mb-1">
-              {language === 'ur' ? 'میری دکان ہے' : 'I own a Shop'}
+              {t('auth.i_am_shop_owner')}
             </Text>
             <Text className="text-xs text-gray-600 text-center">
-              {language === 'ur'
-                ? 'اپنی دکان رجسٹر کریں'
-                : 'Register your shop'}
+              {t('auth.register_your_shop')}
             </Text>
           </AnimatedPressable>
         </View>

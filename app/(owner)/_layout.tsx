@@ -3,10 +3,23 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { useLanguage } from '../../src/hooks/useLanguage';
 
 export default function OwnerLayout() {
+  const { t, language } = useLanguage();
+  const [, forceUpdate] = useState(0);
+
+  // Force re-render when language changes
+  useEffect(() => {
+    console.log('[Owner Layout] Language changed to:', language);
+    console.log('[Owner Layout] t(owner.dashboard) =', t('owner.dashboard'));
+    console.log('[Owner Layout] t(owner.catalog) =', t('owner.catalog'));
+    forceUpdate(prev => prev + 1);
+  }, [language, t]);
   return (
     <Tabs
+      key={language}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#dc2626',
@@ -29,7 +42,7 @@ export default function OwnerLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: 'Dashboard',
+          title: t('owner.dashboard'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -38,7 +51,7 @@ export default function OwnerLayout() {
       <Tabs.Screen
         name="catalog-builder"
         options={{
-          title: 'Catalog',
+          title: t('owner.catalog'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="layers" size={size} color={color} />
           ),
@@ -47,7 +60,7 @@ export default function OwnerLayout() {
       <Tabs.Screen
         name="add-deal"
         options={{
-          title: 'Deals',
+          title: t('owner.add_deal') || 'Deals',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="pricetag" size={size} color={color} />
           ),
@@ -56,7 +69,7 @@ export default function OwnerLayout() {
       <Tabs.Screen
         name="manage-catalog"
         options={{
-          title: 'Products',
+          title: t('owner.catalog') || 'Products',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="list" size={size} color={color} />
           ),
@@ -65,10 +78,16 @@ export default function OwnerLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: t('owner.settings'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings" size={size} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="register-shop"
+        options={{
+          href: null, // Hide from tab bar
         }}
       />
     </Tabs>

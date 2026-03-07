@@ -13,7 +13,7 @@ import { formatPrice, formatTime } from '@utils/formatters';
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
     Alert,
     Platform,
@@ -29,12 +29,14 @@ import Animated, {
     useAnimatedStyle,
     useSharedValue
 } from 'react-native-reanimated';
+import { useLanguage } from '../../../src/hooks/useLanguage';
 import { useFavouritesViewModel } from '../../../src/viewModels/useFavouritesViewModel';
 import { useShopViewModel } from '../../../src/viewModels/useShopViewModel';
 
 const HEADER_HEIGHT = 200;
 
 export default function ShopDetailScreen() {
+  const { t, language } = useLanguage();
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const shopId = params.id;
@@ -102,30 +104,32 @@ export default function ShopDetailScreen() {
     };
   });
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     // Queries will auto-refetch
     setTimeout(() => setRefreshing(false), 1000);
-  };
+  }, []);
 
-  const handleCall = () => {
+  const handleCall = useCallback(() => {
     if (shop?.phone) {
       Linking.openURL(`tel:${shop.phone}`);
     }
-  };
+  }, [shop?.phone]);
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = useCallback(() => {
     if (shop?.whatsapp) {
-      const message = `Assalam o Alaikum! ${shop.name} ke baare mein poochna tha.`;
+      const message = t('customer.shop_whatsapp_message', {
+        shopName: shop.name,
+      });
       const url = `whatsapp://send?phone=${shop.whatsapp.replace(
         /[+\s]/g,
         ''
       )}&text=${encodeURIComponent(message)}`;
       Linking.openURL(url);
     }
-  };
+  }, [shop?.whatsapp, shop?.name, t]);
 
-  const handleDirections = () => {
+  const handleDirections = useCallback(() => {
     if (shop?.location) {
       const url = Platform.select({
         ios: `maps://app?daddr=${shop.location.latitude},${shop.location.longitude}`,
@@ -135,9 +139,9 @@ export default function ShopDetailScreen() {
         Linking.openURL(url);
       }
     }
-  };
+  }, [shop?.location]);
 
-  const handleAddToCart = (product: Product, overridePrice?: number) => {
+  const handleAddToCart = useCallback((product: Product, overridePrice?: number) => {
     const { addItem, setShop } = useCartStore.getState();
 
     const cartItem = {
@@ -155,12 +159,12 @@ export default function ShopDetailScreen() {
     // Check if different shop
     if (cartShopId && cartShopId !== product.shopId) {
       Alert.alert(
-        'نئی دکان سے آرڈر شروع کریں؟',
-        'پرانا آرڈر ختم ہو جائے گا',
+        t('customer.start_order_new_shop'),
+        t('customer.old_order_lost'),
         [
-          { text: 'نہیں', style: 'cancel' },
+          { text: t('common.no'), style: 'cancel' },
           {
-            text: 'ہاں',
+            text: t('common.yes'),
             onPress: () => {
               addItem(cartItem);
             },
@@ -170,25 +174,25 @@ export default function ShopDetailScreen() {
     } else {
       addItem(cartItem);
     }
-  };
+  }, [cartShopId, shop?.name, shop?.whatsapp, t]);
 
-  const handleViewCart = () => {
+  const handleViewCart = useCallback(() => {
     router.push('/(customer)/order' as any);
-  };
+  }, [router]);
 
-  const handleRateShop = () => {
+  const handleRateShop = useCallback(() => {
     if (isRating) return;
     
-    Alert.alert('Shop کو Rate کریں', 'کتنے ستارے دیں گے؟', [
+    Alert.alert(t('customer.rate_shop_title'), t('customer.how_many_stars'), [
       { 
         text: '⭐ 1', 
         onPress: async () => {
           setIsRating(true);
           try {
             await rateShop(1);
-            Alert.alert('شکریہ', 'Rating محفوظ ہو گئی');
+            Alert.alert(t('customer.thank_you'), t('customer.rating_saved'));
           } catch (error) {
-            Alert.alert('خرابی', 'Rating محفوظ نہیں ہو سکی');
+            Alert.alert(t('customer.error'), t('customer.rating_save_failed'));
           } finally {
             setIsRating(false);
           }
@@ -200,9 +204,9 @@ export default function ShopDetailScreen() {
           setIsRating(true);
           try {
             await rateShop(2);
-            Alert.alert('شکریہ', 'Rating محفوظ ہو گئی');
+            Alert.alert(t('customer.thank_you'), t('customer.rating_saved'));
           } catch (error) {
-            Alert.alert('خرابی', 'Rating محفوظ نہیں ہو سکی');
+            Alert.alert(t('customer.error'), t('customer.rating_save_failed'));
           } finally {
             setIsRating(false);
           }
@@ -214,9 +218,9 @@ export default function ShopDetailScreen() {
           setIsRating(true);
           try {
             await rateShop(3);
-            Alert.alert('شکریہ', 'Rating محفوظ ہو گئی');
+            Alert.alert(t('customer.thank_you'), t('customer.rating_saved'));
           } catch (error) {
-            Alert.alert('خرابی', 'Rating محفوظ نہیں ہو سکی');
+            Alert.alert(t('customer.error'), t('customer.rating_save_failed'));
           } finally {
             setIsRating(false);
           }
@@ -228,9 +232,9 @@ export default function ShopDetailScreen() {
           setIsRating(true);
           try {
             await rateShop(4);
-            Alert.alert('شکریہ', 'Rating محفوظ ہو گئی');
+            Alert.alert(t('customer.thank_you'), t('customer.rating_saved'));
           } catch (error) {
-            Alert.alert('خرابی', 'Rating محفوظ نہیں ہو سکی');
+            Alert.alert(t('customer.error'), t('customer.rating_save_failed'));
           } finally {
             setIsRating(false);
           }
@@ -242,47 +246,52 @@ export default function ShopDetailScreen() {
           setIsRating(true);
           try {
             await rateShop(5);
-            Alert.alert('شکریہ', 'Rating محفوظ ہو گئی');
+            Alert.alert(t('customer.thank_you'), t('customer.rating_saved'));
           } catch (error) {
-            Alert.alert('خرابی', 'Rating محفوظ نہیں ہو سکی');
+            Alert.alert(t('customer.error'), t('customer.rating_save_failed'));
           } finally {
             setIsRating(false);
           }
         }
       },
-      { text: 'Cancel', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
-  };
+  }, [isRating, rateShop, t]);
 
-  const handleToggleFavourite = async () => {
+  const handleToggleFavourite = useCallback(async () => {
     if (isFavouriting) return;
     
     setIsFavouriting(true);
     try {
       await toggleFavourite(shopId);
     } catch (error) {
-      Alert.alert('خرابی', 'پسندیدہ میں شامل/ہٹانے میں خرابی');
+      Alert.alert(t('customer.error'), t('customer.favourite_toggle_error'));
     } finally {
       setIsFavouriting(false);
     }
-  };
+  }, [isFavouriting, toggleFavourite, shopId, t]);
 
-  const handleDealPress = (deal: any) => {
+  const handleDealPress = useCallback((deal: any) => {
     // Find the product in the catalog
     const product = products.find((p) => p.name === deal.productName);
     if (product) {
       // Add to cart with deal price instead of regular price
       handleAddToCart(product, deal.dealPrice);
       Alert.alert(
-        '🎉 Deal شامل ہو گیا!',
-        `${deal.productName}\nRs. ${deal.originalPrice} → Rs. ${deal.dealPrice}\n\nآپ نے Rs. ${deal.savingsAmount} بچائے!`
+        t('customer.deal_added_title'),
+        t('customer.deal_added_message', {
+          productName: deal.productName,
+          originalPrice: deal.originalPrice,
+          dealPrice: deal.dealPrice,
+          savingsAmount: deal.savingsAmount,
+        })
       );
     } else {
       Alert.alert('Deal', `${deal.productName}\nRs. ${deal.dealPrice}`);
     }
-  };
+  }, [products, handleAddToCart, t]);
 
-  const getCategoryColor = (category: string) => {
+  const getCategoryColor = useCallback((category: string) => {
     const colors: Record<string, string> = {
       kiryana: '#16a34a',
       pharmacy: '#ef4444',
@@ -296,7 +305,7 @@ export default function ShopDetailScreen() {
       other: '#64748b',
     };
     return colors[category] || '#64748b';
-  };
+  }, []);
 
   if (isLoading) {
     return (
@@ -313,9 +322,9 @@ export default function ShopDetailScreen() {
       <View className="flex-1 bg-gray-50 items-center justify-center">
         <EmptyState
           variant="no_shops"
-          title="Shop نہیں ملی"
-          subtitle={error || 'Shop کی تفصیلات لوڈ نہیں ہو سکیں'}
-          actionLabel="واپس جائیں"
+          title={t('customer.shop_not_found')}
+          subtitle={error || t('customer.shop_details_load_failed')}
+          actionLabel={t('customer.go_back')}
           onAction={() => router.back()}
         />
       </View>
@@ -410,7 +419,7 @@ export default function ShopDetailScreen() {
               {shop.isVerified && (
                 <View className="ml-2 flex-row items-center">
                   <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-                  <Text className="text-white text-xs ml-1">Verified</Text>
+                  <Text className="text-white text-xs ml-1">{t('customer.verified')}</Text>
                 </View>
               )}
             </View>
@@ -435,14 +444,18 @@ export default function ShopDetailScreen() {
               color={isCurrentlyOpen ? '#10b981' : '#ef4444'}
             />
             <Text className="text-gray-600 text-sm ml-1">
-              {isCurrentlyOpen ? 'کھلا' : 'بند'}
+              {isCurrentlyOpen ? t('customer.open') : t('customer.closed')}
             </Text>
           </View>
 
           <Text className="text-gray-600 text-sm">
             {isCurrentlyOpen
-              ? `آج ${formatTime(shop.hours.closeTime)} تک کھلا`
-              : `کل ${formatTime(shop.hours.openTime)} بجے کھلے گا`}
+              ? t('customer.open_until_time', {
+                  time: formatTime(shop.hours.closeTime),
+                })
+              : t('customer.opens_tomorrow_at_time', {
+                  time: formatTime(shop.hours.openTime),
+                })}
           </Text>
         </View>
 
@@ -454,7 +467,7 @@ export default function ShopDetailScreen() {
           >
             <Ionicons name="call" size={24} color="#16a34a" />
             <Text className="text-gray-900 text-sm font-semibold mt-1">
-              کال
+              {t('customer.call')}
             </Text>
           </Pressable>
 
@@ -464,7 +477,7 @@ export default function ShopDetailScreen() {
           >
             <Ionicons name="logo-whatsapp" size={24} color="#25D366" />
             <Text className="text-gray-900 text-sm font-semibold mt-1">
-              واٹس ایپ
+              {t('customer.whatsapp')}
             </Text>
           </Pressable>
 
@@ -474,7 +487,7 @@ export default function ShopDetailScreen() {
           >
             <Ionicons name="navigate" size={24} color="#3b82f6" />
             <Text className="text-gray-900 text-sm font-semibold mt-1">
-              راستہ
+              {t('customer.directions')}
             </Text>
           </Pressable>
         </View>
@@ -484,7 +497,7 @@ export default function ShopDetailScreen() {
           <View className="bg-white py-4 mt-2 border-t border-b border-gray-200">
             <View className="px-4 flex-row items-center mb-3">
               <Text className="text-lg font-bold text-gray-900">
-                🔥 آج کے ڈیلز
+                {t('customer.deals_today_with_fire')}
               </Text>
             </View>
             <ScrollView
@@ -508,7 +521,7 @@ export default function ShopDetailScreen() {
               onChangeText={searchInShop}
               onSubmit={searchInShop}
               onClear={() => searchInShop('')}
-              placeholder="اس دکان میں تلاش کریں"
+              placeholder={t('customer.search_in_shop')}
               autoFocus={false}
             />
           </View>
@@ -530,7 +543,7 @@ export default function ShopDetailScreen() {
                   selectedCategory === null ? 'text-white' : 'text-gray-700'
                 }`}
               >
-                All ({products.length})
+                {t('customer.all')} ({products.length})
               </Text>
             </Pressable>
 
@@ -560,8 +573,8 @@ export default function ShopDetailScreen() {
             {displayProducts.length === 0 ? (
               <EmptyState
                 variant="no_results"
-                title="کوئی پروڈکٹ نہیں ملا"
-                subtitle="کچھ اور تلاش کریں"
+                title={t('customer.no_product_found')}
+                subtitle={t('customer.try_another_search')}
               />
             ) : (
               displayProducts.map((product) => (
@@ -614,12 +627,15 @@ export default function ShopDetailScreen() {
           <View className="flex-row items-center">
             <Ionicons name="cart" size={24} color="white" />
             <Text className="text-white font-bold text-lg ml-2">
-              {totalItems} چیزیں • {formatPrice(totalPrice)}
+              {t('customer.selected_items_total', {
+                count: totalItems,
+                subtotal: totalPrice,
+              })}
             </Text>
           </View>
           <View className="flex-row items-center">
             <Text className="text-white font-semibold text-base mr-2">
-              آرڈر دیکھیں
+              {t('customer.view_order')}
             </Text>
             <Ionicons name="arrow-forward" size={20} color="white" />
           </View>

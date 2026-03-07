@@ -8,7 +8,7 @@ import { openWhatsAppOrder } from '@services/whatsappService';
 import { FlashList } from '@shopify/flash-list';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Alert,
     Pressable,
@@ -22,6 +22,7 @@ import { ProductItem } from '../../src/components/ProductItem';
 import { SearchBar } from '../../src/components/SearchBar';
 import { ShopCard } from '../../src/components/ShopCard';
 import { ProductItemSkeleton } from '../../src/components/SkeletonLoader';
+import { useLanguage } from '../../src/hooks/useLanguage';
 import { useAuthStore } from '../../src/store/authStore';
 import { useLocationViewModel } from '../../src/viewModels/useLocationViewModel';
 import { useSearchViewModel } from '../../src/viewModels/useSearchViewModel';
@@ -57,6 +58,7 @@ type ProductListItem =
 const CACHE_KEY = 'dukandar-results-cache';
 
 export default function ResultsScreen() {
+  const { t, language } = useLanguage();
   const router = useRouter();
   const { query: queryParam, fromMultiSearch } = useLocalSearchParams<{
     query?: string;
@@ -224,11 +226,11 @@ export default function ResultsScreen() {
   const selectedShopId = selectedProducts.length > 0 ? selectedProducts[0].shopId : null;
   const selectedSubtotal = selectedProducts.reduce((sum, product) => sum + product.price, 0);
 
-  const handleAddToOrder = (product: ProductWithShop) => {
+  const handleAddToOrder = useCallback((product: ProductWithShop) => {
     if (selectedShopId && selectedShopId !== product.shopId) {
       Alert.alert(
-        'الگ دکان',
-        'ایک وقت میں صرف ایک دکان کا آرڈر بھیج سکتے ہیں۔ پہلے موجودہ آئٹمز ہٹائیں۔'
+        t('customer.different_shop'),
+        t('customer.one_shop_at_a_time')
       );
       return;
     }
@@ -238,15 +240,15 @@ export default function ResultsScreen() {
       updated.set(product.id, product);
       return updated;
     });
-  };
+  }, [selectedShopId, t]);
 
-  const handleRemoveFromOrder = (productId: string) => {
+  const handleRemoveFromOrder = useCallback((productId: string) => {
     setSelectedItems((previous) => {
       const updated = new Map(previous);
       updated.delete(productId);
       return updated;
     });
-  };
+  }, []);
 
   const handleSendWhatsAppOrder = async () => {
     if (selectedProducts.length === 0) {
@@ -280,7 +282,7 @@ export default function ResultsScreen() {
     try {
       await openWhatsAppOrder(order);
     } catch (whatsappError: any) {
-      Alert.alert('خرابی', whatsappError?.message || 'WhatsApp نہیں کھل سکا');
+      Alert.alert(t('customer.error'), whatsappError?.message || t('customer.whatsapp_open_failed'));
     }
   };
 
@@ -292,12 +294,12 @@ export default function ResultsScreen() {
     try {
       const phone = String(shop?.whatsapp || '').replace(/[+\s]/g, '');
       if (!phone) {
-        Alert.alert('خرابی', 'WhatsApp نمبر دستیاب نہیں ہے');
+        Alert.alert(t('customer.error'), t('customer.whatsapp_not_available'));
         return;
       }
 
       const message = encodeURIComponent(
-        `السلام علیکم! میں ${shop.name} سے رابطہ کرنا چاہتا/چاہتی ہوں۔\nDukandaR app سے`
+        `${t('customer.whatsapp_greeting')} ${shop.name} ${t('customer.from_dukandar_app')}`
       );
       const nativeUrl = `whatsapp://send?phone=${phone}&text=${message}`;
       const webUrl = `https://wa.me/${phone}?text=${message}`;
@@ -305,13 +307,13 @@ export default function ResultsScreen() {
       const canOpenNative = await Linking.canOpenURL(nativeUrl);
       await Linking.openURL(canOpenNative ? nativeUrl : webUrl);
     } catch (error) {
-      Alert.alert('خرابی', 'WhatsApp کھولنے میں ناکام');
+      Alert.alert(t('customer.error'), t('customer.whatsapp_open_failed'));
     }
   };
 
   const handleFlagStock = async (productId: string, shopId: string) => {
     if (!user?.id) {
-      Alert.alert('خرابی', 'پہلے لاگ اِن کریں');
+      Alert.alert(t('customer.error'), t('customer.please_login_first'));
       return;
     }
 
@@ -321,21 +323,21 @@ export default function ResultsScreen() {
     setIsFlagging(flagKey);
     try {
       await flagProductOutOfStock(shopId, productId, user.id);
-      Alert.alert('شکریہ', 'اسٹاک رپورٹ محفوظ ہو گئی');
+      Alert.alert(t('customer.thank_you'), t('customer.stock_report_saved'));
     } catch (flagError: any) {
-      Alert.alert('خرابی', flagError?.message || 'رپورٹ محفوظ نہیں ہو سکی');
+      Alert.alert(t('customer.error'), flagError?.message || t('customer.report_save_failed'));
     } finally {
       setIsFlagging(null);
     }
   };
 
   const handleDistancePress = () => {
-    Alert.alert('فاصلہ منتخب کریں', 'سرچ رینج منتخب کریں', [
+    Alert.alert(t('customer.select_distance'), t('customer.select_search_range'), [
       { text: '1 km', onPress: () => updateRadius(1) },
       { text: '2 km', onPress: () => updateRadius(2) },
       { text: '5 km', onPress: () => updateRadius(5) },
       { text: '10 km', onPress: () => updateRadius(10) },
-      { text: 'منسوخ', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -378,7 +380,7 @@ export default function ResultsScreen() {
               onChangeText={setQuery}
               onSubmit={(text) => search(text.trim())}
               onClear={clearSearch}
-              placeholder="کیا ڈھونڈ رہے ہیں؟"
+              placeholder={t('customer.what_are_you_looking_for')}
             />
           </View>
 
@@ -394,9 +396,9 @@ export default function ResultsScreen() {
         className="max-h-[58px]"
         contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, alignItems: 'center' }}
       >
-        {renderSortPill('nearest', 'قریب ترین')}
-        {renderSortPill('cheapest', 'سستا')}
-        {renderSortPill('best_rated', 'بہترین')}
+        {renderSortPill('nearest', t('customer.nearest'))}
+        {renderSortPill('cheapest', t('customer.cheapest_nearby'))}
+        {renderSortPill('best_rated', t('customer.best_rated'))}
 
         <Pressable
           onPress={toggleShowOpenOnly}
@@ -405,7 +407,7 @@ export default function ResultsScreen() {
           }`}
         >
           <Text className={`${showOpenOnly ? 'text-white' : 'text-gray-700'} text-sm font-medium`}>
-            ابھی کھلا ●
+            {t('customer.open_now_only')}
           </Text>
         </Pressable>
 
@@ -426,7 +428,7 @@ export default function ResultsScreen() {
             }`}
           >
             <Text className={`${viewMode === 'product' ? 'text-white' : 'text-gray-700'} font-medium`}>
-              📦 پروڈکٹ
+              {t('customer.view_mode_products')}
             </Text>
           </Pressable>
 
@@ -437,7 +439,7 @@ export default function ResultsScreen() {
             }`}
           >
             <Text className={`${viewMode === 'shop' ? 'text-white' : 'text-gray-700'} font-medium`}>
-              🏪 دکان
+              {t('customer.view_mode_shops')}
             </Text>
           </Pressable>
         </View>
@@ -445,7 +447,10 @@ export default function ResultsScreen() {
 
       <View className="px-4 pb-2">
         <Text className="text-sm text-gray-700">
-          {displayedGrouped.length} دکانوں میں '{query || initialQuery}' ملا
+          {t('customer.found_in_shops', {
+            count: displayedGrouped.length,
+            query: query || initialQuery,
+          })}
         </Text>
       </View>
 
@@ -461,7 +466,7 @@ export default function ResultsScreen() {
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-red-600 text-center mb-4">{error}</Text>
           <Pressable onPress={handleRetry} className="bg-primary rounded-xl px-5 py-3">
-            <Text className="text-white font-semibold">دوبارہ کوشش کریں</Text>
+            <Text className="text-white font-semibold">{t('common.retry')}</Text>
           </Pressable>
         </View>
       ) : displayedResults.length === 0 && isOffline ? (
@@ -530,33 +535,42 @@ export default function ResultsScreen() {
                   {isMultiSearch ? (
                     item.hasAllItems ? (
                       <Text className="text-green-700 font-semibold">
-                        ✅ تمام {availableItems} چیزیں موجود
+                        ✅ {t('customer.all_items_available', { availableItems })}
                       </Text>
                     ) : (
                       <Text className="text-orange-700 font-semibold">
-                        ⚠️ {availableItems}/{totalItems} چیزیں موجود
+                        ⚠️ {t('customer.items_available_ratio', { availableItems, totalItems })}
                       </Text>
                     )
                   ) : (
                     <Text className="text-gray-700 font-medium">
-                      {availableItems}/{totalItems} items available
+                      {t('customer.items_available_ratio', { availableItems, totalItems })}
                     </Text>
                   )}
 
                   <Text className="text-gray-700 mt-2">
-                    {item.products.slice(0, 3).map((p) => p.name).join('، ')}
-                    {item.products.length > 3 ? ` اور ${item.products.length - 3} مزید` : ''}
+                    {item.products
+                      .slice(0, 3)
+                      .map((p) => p.name)
+                      .join(language === 'ur' ? '، ' : ', ')}
+                    {item.products.length > 3
+                      ? ` ${t('customer.and_more', {
+                          count: item.products.length - 3,
+                        })}`
+                      : ''}
                   </Text>
 
                   {missingItems.length > 0 && (
                     <Text className="text-gray-400 line-through mt-1">
-                      {missingItems.join('، ')}
+                      {missingItems.join(language === 'ur' ? '، ' : ', ')}
                     </Text>
                   )}
 
                   {isMultiSearch && (
                     <Text className="text-gray-900 font-semibold mt-2">
-                      تخمینی کل: Rs. {item.estimatedTotal}
+                      {t('customer.estimated_total', {
+                        total: item.estimatedTotal,
+                      })}
                     </Text>
                   )}
                 </View>
@@ -572,20 +586,20 @@ export default function ResultsScreen() {
           className="absolute inset-0 bg-black/30 justify-end"
         >
           <Pressable className="bg-white rounded-t-3xl p-5 pb-8">
-            <Text className="text-lg font-bold text-gray-900 mb-4">فلٹرز</Text>
+            <Text className="text-lg font-bold text-gray-900 mb-4">{t('customer.filters')}</Text>
 
-            <Text className="text-sm text-gray-600 mb-2">Sort</Text>
+            <Text className="text-sm text-gray-600 mb-2">{t('common.sort')}</Text>
             <View className="flex-row flex-wrap mb-4">
-              {renderSortPill('nearest', 'قریب ترین')}
-              {renderSortPill('cheapest', 'سستا')}
-              {renderSortPill('best_rated', 'بہترین')}
+              {renderSortPill('nearest', t('customer.nearest'))}
+              {renderSortPill('cheapest', t('customer.cheapest_nearby'))}
+              {renderSortPill('best_rated', t('customer.best_rated'))}
             </View>
 
             <Pressable
               onPress={toggleShowOpenOnly}
               className="flex-row items-center justify-between py-3"
             >
-              <Text className="text-base text-gray-900">صرف کھلی دکانیں</Text>
+              <Text className="text-base text-gray-900">{t('customer.open_shops_only')}</Text>
               <Ionicons
                 name={showOpenOnly ? 'checkmark-circle' : 'ellipse-outline'}
                 size={22}
@@ -602,7 +616,7 @@ export default function ResultsScreen() {
               onPress={() => setShowFilterSheet(false)}
               className="bg-primary rounded-xl py-3 mt-3"
             >
-              <Text className="text-white text-center font-semibold">لاگو کریں</Text>
+              <Text className="text-white text-center font-semibold">{t('customer.apply_filters')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -612,7 +626,10 @@ export default function ResultsScreen() {
         <View className="absolute left-0 right-0 bottom-0 bg-white border-t border-gray-200 px-4 pt-3 pb-6">
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-sm text-gray-700">
-              {selectedProducts.length} آئٹمز • Rs. {selectedSubtotal}
+              {t('customer.selected_items_total', {
+                count: selectedProducts.length,
+                subtotal: selectedSubtotal,
+              })}
             </Text>
             <Pressable
               onPress={() => {
@@ -622,7 +639,7 @@ export default function ResultsScreen() {
                 }
               }}
             >
-              <Text className="text-sm text-red-600">ایک کم کریں</Text>
+              <Text className="text-sm text-red-600">{t('customer.remove_one')}</Text>
             </Pressable>
           </View>
 
@@ -631,7 +648,7 @@ export default function ResultsScreen() {
             className="bg-green-600 rounded-xl py-3 flex-row items-center justify-center"
           >
             <Ionicons name="logo-whatsapp" size={18} color="white" />
-            <Text className="text-white font-semibold ml-2">WhatsApp آرڈر بھیجیں</Text>
+            <Text className="text-white font-semibold ml-2">{t('customer.send_whatsapp_order')}</Text>
           </Pressable>
         </View>
       )}

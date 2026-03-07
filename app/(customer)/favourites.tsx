@@ -19,9 +19,11 @@ import {
 import { Swipeable } from 'react-native-gesture-handler';
 import { EmptyState } from '../../src/components/EmptyState';
 import { ShopCard } from '../../src/components/ShopCard';
+import { useLanguage } from '../../src/hooks/useLanguage';
 import { useFavouritesViewModel } from '../../src/viewModels/useFavouritesViewModel';
 
 export default function FavouritesScreen() {
+  const { t, language } = useLanguage();
   const router = useRouter();
   const { favouriteShops, isLoading, isEmpty, removeFavourite, refetch } =
     useFavouritesViewModel();
@@ -35,34 +37,34 @@ export default function FavouritesScreen() {
 
   const handleRemove = useCallback(
     async (shopId: string, shopName: string) => {
-      Alert.alert('ہٹائیں', `${shopName} کو پسندیدہ سے نکالیں؟`, [
-        { text: 'منسوخ', style: 'cancel' },
+      Alert.alert(t('customer.remove'), `${shopName} ${t('customer.remove_favourite')}`, [
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'ہٹائیں',
+          text: t('customer.remove'),
           style: 'destructive',
           onPress: async () => {
             try {
               await removeFavourite(shopId);
             } catch (error) {
-              Alert.alert('خرابی', 'ہٹانے میں خرابی');
+              Alert.alert(t('common.error'), t('customer.remove_error'));
             }
           },
         },
       ]);
     },
-    [removeFavourite]
+    [removeFavourite, t]
   );
 
   const handleWhatsAppPress = useCallback(async (shop: any) => {
     try {
       const phone = String(shop?.whatsapp || '').replace(/[+\s]/g, '');
       if (!phone) {
-        Alert.alert('خرابی', 'WhatsApp نمبر دستیاب نہیں ہے');
+        Alert.alert(t('common.error'), t('customer.whatsapp_not_available'));
         return;
       }
 
       const message = encodeURIComponent(
-        `السلام علیکم! میں ${shop.name} سے رابطہ کرنا چاہتا/چاہتی ہوں۔\nDukandaR app سے`
+        `${t('customer.whatsapp_greeting')} ${shop.name} ${t('customer.from_dukandar_app')}`
       );
       const nativeUrl = `whatsapp://send?phone=${phone}&text=${message}`;
       const webUrl = `https://wa.me/${phone}?text=${message}`;
@@ -70,16 +72,16 @@ export default function FavouritesScreen() {
       const canOpenNative = await Linking.canOpenURL(nativeUrl);
       await Linking.openURL(canOpenNative ? nativeUrl : webUrl);
     } catch (error) {
-      Alert.alert('خرابی', 'WhatsApp کھولنے میں ناکام');
+      Alert.alert(t('customer.error'), t('customer.whatsapp_open_failed'));
     }
-  }, []);
+  }, [t]);
 
   const renderRightActions = (shopId: string, shopName: string) => (
     <TouchableOpacity
       className="bg-red-500 w-20 flex items-center justify-center"
       onPress={() => handleRemove(shopId, shopName)}
     >
-      <Text className="text-white font-semibold text-sm">ہٹائیں</Text>
+      <Text className="text-white font-semibold text-sm">{t('customer.remove')}</Text>
     </TouchableOpacity>
   );
 
@@ -102,7 +104,7 @@ export default function FavouritesScreen() {
       <View className="bg-white px-6 py-4 border-b border-gray-200">
         <View className="flex-row items-center justify-between">
           <Text className="text-2xl font-bold text-gray-900">
-            پسندیدہ دکانیں
+            {t('customer.favourites')}
           </Text>
           {!isEmpty && (
             <View className="bg-green-100 px-3 py-1 rounded-full">
@@ -122,7 +124,7 @@ export default function FavouritesScreen() {
       ) : isEmpty ? (
         <EmptyState
           variant="empty_favourites"
-          actionLabel="دکانیں تلاش کریں"
+          actionLabel={t('customer.search_shops')}
           onAction={() => router.push('/(customer)')}
         />
       ) : (

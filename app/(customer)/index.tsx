@@ -4,7 +4,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
     Alert,
     Platform,
@@ -26,10 +26,12 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { SearchBar } from '../../src/components/SearchBar';
 import { ShopCard } from '../../src/components/ShopCard';
 import { ShopCardSkeleton } from '../../src/components/SkeletonLoader';
+import { useLanguage } from '../../src/hooks/useLanguage';
 import { useLocationViewModel } from '../../src/viewModels/useLocationViewModel';
 import { useSearchViewModel } from '../../src/viewModels/useSearchViewModel';
 
 export default function CustomerHome() {
+  const { t, toggleLanguage, language } = useLanguage();
   const router = useRouter();
   const {
     location,
@@ -61,32 +63,31 @@ export default function CustomerHome() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [refreshing, setRefreshing] = useState(false);
-  const [language, setLanguage] = useState<'en' | 'ur'>('ur');
 
   // Handle search submit
-  const handleSearch = (searchQuery: string) => {
+  const handleSearch = useCallback((searchQuery: string) => {
     if (searchQuery.trim()) {
       router.push({
         pathname: '/(customer)/results' as any,
         params: { query: searchQuery.trim() },
       });
     }
-  };
+  }, [router]);
 
   // Handle category selection
-  const handleCategorySelect = (categoryId: string) => {
+  const handleCategorySelect = useCallback((categoryId: string) => {
     setSelectedCategory(categoryId);
     // Category filtering is done in the filteredShops computed value below
-  };
+  }, []);
 
   // Handle trending search tap
-  const handleTrendingSearch = (searchQuery: string) => {
+  const handleTrendingSearch = useCallback((searchQuery: string) => {
     setQuery(searchQuery);
     handleSearch(searchQuery);
-  };
+  }, [setQuery, handleSearch]);
 
   // Handle refresh
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await refreshLocation();
@@ -96,57 +97,62 @@ export default function CustomerHome() {
     } finally {
       setRefreshing(false);
     }
-  };
+  }, [refreshLocation, refreshShops]);
 
   // Handle shop press
-  const handleShopPress = (shopId: string) => {
+  const handleShopPress = useCallback((shopId: string) => {
     router.push(`/(customer)/shop/${shopId}` as any);
-  };
+  }, [router]);
 
   // Handle WhatsApp press
-  const handleWhatsAppPress = (shop: any) => {
+  const handleWhatsAppPress = useCallback((shop: any) => {
     Alert.alert(
       'WhatsApp',
-      `${shop.name} سے رابطہ کریں؟`,
+      `${shop.name} ${t('customer.contact_shop')}`,
       [
-        { text: 'منسوخ', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'ہاں',
+          text: t('common.yes'),
           onPress: async () => {
             try {
-              const message = `السلام علیکم! میں ${shop.name} سے رابطہ کرنا چاہتا/چاہتی ہوں۔\nDukandaR app سے`;
+              const message = `${t('customer.whatsapp_greeting')} ${shop.name} ${t('customer.from_dukandar_app')}`;
               const encodedMessage = encodeURIComponent(message);
               const phoneNumber = shop.whatsapp.replace(/[+\s]/g, '');
               const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${encodedMessage}`;
               await Linking.openURL(whatsappUrl);
             } catch (error) {
-              Alert.alert('خرابی', 'WhatsApp کھولنے میں ناکام');
+              Alert.alert(t('common.error'), t('customer.whatsapp_error'));
             }
           },
         },
       ]
     );
-  };
+  }, [t, router]);
 
   // Display location text
-  const locationText = area && city ? `${area}, ${city}` : area || 'لوکیشن منتخب کریں';
+  const locationText = useMemo(() => {
+    return area && city ? `${area}, ${city}` : area || t('customer.location_select');
+  }, [area, city, t]);
 
   // Filter shops by category
-  const filteredShops =
-    selectedCategory === 'all'
-      ? nearbyShops
-      : nearbyShops.filter((shop) => shop.category === selectedCategory);
+  const filteredShops = useMemo(
+    () =>
+      selectedCategory === 'all'
+        ? nearbyShops
+        : nearbyShops.filter((shop) => shop.category === selectedCategory),
+    [selectedCategory, nearbyShops]
+  );
 
   // Render permission denied state
   if (permissionStatus === 'denied' || permissionStatus === 'blocked') {
     return (
       <View className="flex-1 bg-gray-50">
         <View className="bg-primary px-6 pt-12 pb-6">
-          <Text className="text-white text-2xl font-bold">DukandaR</Text>
+          <Text className="text-white text-2xl font-bold">{t('common.app_name')}</Text>
         </View>
         <EmptyState
           variant="permission_denied"
-          actionLabel="اجازت دیں"
+          actionLabel={t('customer.allow_permission')}
           onAction={requestPermission}
         />
       </View>
@@ -173,7 +179,8 @@ export default function CustomerHome() {
 
           <Pressable
             onPress={() => {
-              setLanguage(language === 'en' ? 'ur' : 'en');
+              console.log('[Customer Home] Language button pressed');
+              toggleLanguage();
             }}
             className="ml-4"
           >
@@ -192,12 +199,12 @@ export default function CustomerHome() {
         {/* Radius Selector */}
         <Pressable
           onPress={() => {
-            Alert.alert('تلاش کی رینج منتخب کریں', '', [
+            Alert.alert(t('customer.select_search_range'), '', [
               { text: '1 km', onPress: () => updateRadius(1) },
               { text: '2 km', onPress: () => updateRadius(2) },
               { text: '5 km', onPress: () => updateRadius(5) },
               { text: '10 km', onPress: () => updateRadius(10) },
-              { text: 'منسوخ', style: 'cancel' },
+              { text: t('common.cancel'), style: 'cancel' },
             ]);
           }}
           className="flex-row items-center self-end mt-2"
@@ -218,7 +225,7 @@ export default function CustomerHome() {
         {!hasSearched && (
           <View className="bg-white px-6 py-4 mb-2">
             <Text className="text-lg font-bold text-gray-900 mb-3">
-              🔥 آج کیا ڈھونڈ رہے ہیں؟
+              🔥 {t('customer.trending_today')}
             </Text>
             <View className="flex-row flex-wrap">
               {trendingSearches.map((item, index) => (
@@ -238,7 +245,7 @@ export default function CustomerHome() {
         {!hasSearched && recentSearches.length > 0 && (
           <View className="bg-white px-6 py-4 mb-2">
             <Text className="text-base font-semibold text-gray-900 mb-3">
-              حالیہ تلاش
+              {t('customer.recent_searches')}
             </Text>
             {recentSearches.map((item, index) => (
               <View key={index} className="flex-row items-center py-2">
@@ -265,7 +272,7 @@ export default function CustomerHome() {
         {!hasSearched && (
           <View className="bg-white py-4 mb-2">
             <Text className="text-lg font-bold text-gray-900 px-6 mb-2">
-              دکانوں کی اقسام
+              {t('customer.shop_categories')}
             </Text>
             <CategoryFilter selected={selectedCategory} onSelect={handleCategorySelect} />
           </View>
@@ -276,7 +283,7 @@ export default function CustomerHome() {
           <View className="bg-white flex-1">
             <View className="px-6 py-4 flex-row items-center justify-between">
               <Text className="text-lg font-bold text-gray-900">
-                آپ کے قریب دکانیں ({filteredShops.length})
+                {t('customer.shops_near_you')} ({filteredShops.length})
               </Text>
 
               <View className="flex-row">
@@ -345,7 +352,7 @@ export default function CustomerHome() {
                           <View style={{ minWidth: 160 }}>
                             <Text className="font-semibold text-gray-900">{shop.name}</Text>
                             <Text className="text-xs text-gray-600 mt-1">
-                              {shop.category} • {shop.isOpen ? 'کھلا' : 'بند'}
+                              {shop.category} • {shop.isOpen ? t('customer.open') : t('customer.shop_closed')}
                             </Text>
                           </View>
                         </Callout>
@@ -357,16 +364,16 @@ export default function CustomerHome() {
                 <View className="px-6 pb-6 items-center justify-center" style={{ minHeight: 500 }}>
                   <Ionicons name="map" size={48} color="#d1d5db" />
                   <Text className="text-gray-600 text-center mt-4">
-                    نقشہ دیکھنے کے لیے Development Build کی ضرورت ہے
+                    {t('customer.map_needs_dev_build')}
                   </Text>
                   <Text className="text-gray-500 text-center text-sm mt-2">
-                    فہرست میں تبدیل کرنے کے لیے نیچے بٹن دبائیں
+                    {t('customer.switch_to_list_prompt')}
                   </Text>
                   <Pressable
                     onPress={() => setViewMode('list')}
                     className="mt-4 bg-primary px-6 py-2 rounded-lg"
                   >
-                    <Text className="text-white font-semibold">فہرست دیکھیں</Text>
+                    <Text className="text-white font-semibold">{t('customer.view_list')}</Text>
                   </Pressable>
                 </View>
               )
@@ -381,7 +388,6 @@ export default function CustomerHome() {
                       onWhatsAppPress={() => handleWhatsAppPress(item)}
                     />
                   )}
-                  estimatedItemSize={120}
                   keyExtractor={(item) => item.id}
                 />
               </View>

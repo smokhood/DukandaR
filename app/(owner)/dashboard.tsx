@@ -4,6 +4,7 @@
  * Shows: Real-time stats, pending orders, notifications, demand alerts, verification status
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@store/authStore';
 import { useOwnerDashViewModel } from '@viewModels/useOwnerDashViewModel';
 import { useRouter } from 'expo-router';
@@ -11,6 +12,7 @@ import { useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
+    Pressable,
     RefreshControl,
     ScrollView,
     Text,
@@ -18,10 +20,12 @@ import {
     View,
 } from 'react-native';
 import { CustomButton } from '../../src/components/CustomButton';
+import { useLanguage } from '../../src/hooks/useLanguage';
 
 export default function OwnerDashboardScreen() {
     const router = useRouter();
   const { user } = useAuthStore();
+  const { t, toggleLanguage } = useLanguage();
   const {
     dashStats,
     isLoading,
@@ -38,22 +42,43 @@ export default function OwnerDashboardScreen() {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator size="large" color="#dc2626" />
+        <Text className="text-gray-600 mt-2">{t('owner.loading_shop')}</Text>
       </View>
     );
   }
 
-  if (!dashStats.shop) {
+  // Only show register screen if user truly has no shopId
+  if (!user?.shopId) {
     return (
       <View className="flex-1 items-center justify-center bg-white p-4">
         <Text className="text-xl font-semibold text-gray-800 mb-2">
-          دکان رجسٹر کریں
+          {t('owner.register_shop')}
         </Text>
         <Text className="text-gray-600 mb-4 text-center">
-          اپنی دکان رجسٹر کریں اور گاہکوں تک پہنچیں
+          {t('owner.register_shop')}
         </Text>
         <CustomButton 
-          title="Register Shop" 
+          title={t('owner.register_shop')} 
           onPress={() => router.push('/(owner)/register-shop')} 
+        />
+      </View>
+    );
+  }
+
+  // If user has shopId but shop data not loaded yet, show error
+  if (!dashStats.shop) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white p-4">
+        <Ionicons name="alert-circle-outline" size={64} color="#dc2626" />
+        <Text className="text-xl font-semibold text-gray-800 mb-2 mt-4">
+          {t('owner.failed_load_shop')}
+        </Text>
+        <Text className="text-gray-600 mb-4 text-center">
+          {t('owner.check_connection')}
+        </Text>
+        <CustomButton 
+          title={t('owner.retry')} 
+          onPress={refreshDashboard} 
         />
       </View>
     );
@@ -89,10 +114,18 @@ export default function OwnerDashboardScreen() {
               {dashStats.shop.location.city}
             </Text>
           </View>
-          <View className="px-2 py-1 rounded-full bg-blue-100">
-            <Text className="text-xs font-medium text-blue-600">
-              ACTIVE
-            </Text>
+          <View className="flex-row items-center">
+            <Pressable onPress={() => {
+              console.log('[Owner Dashboard] Language button pressed');
+              toggleLanguage();
+            }} className="mr-3 p-2">
+              <Ionicons name="language" size={24} color="#6b7280" />
+            </Pressable>
+            <View className="px-2 py-1 rounded-full bg-blue-100">
+              <Text className="text-xs font-medium text-blue-600">
+                ACTIVE
+              </Text>
+            </View>
           </View>
         </View>
       </View>

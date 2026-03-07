@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ProductWithShop } from '@models/Product';
 import { formatDistance } from '@utils/formatters';
+import { memo, useCallback } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
+import { useLanguage } from '../hooks/useLanguage';
 import { StockBadge } from './StockBadge';
 
 interface ProductItemProps {
@@ -12,27 +14,40 @@ interface ProductItemProps {
   isInCart?: boolean;
 }
 
-export function ProductItem({
+function ProductItemComponent({
   product,
   onAddToOrder,
   onShopPress,
   onFlagStock,
   isInCart = false,
 }: ProductItemProps) {
-  const openStatus = product.shop?.isCurrentlyOpen ? 'کھلا' : 'بند';
+  const { t } = useLanguage();
+  const openStatus = product.shop?.isCurrentlyOpen
+    ? t('customer.open')
+    : t('customer.closed');
+
+  const handleLongPress = useCallback(() => {
+    Alert.alert(t('common.report'), t('customer.report_stock_incorrect'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.report'),
+        style: 'destructive',
+        onPress: () => onFlagStock(product.id, product.shopId),
+      },
+    ]);
+  }, [onFlagStock, product.id, product.shopId, t]);
+
+  const handleShopPress = useCallback(() => {
+    onShopPress(product.shopId);
+  }, [product.shopId, onShopPress]);
+
+  const handleAddPress = useCallback(() => {
+    onAddToOrder(product);
+  }, [product, onAddToOrder]);
 
   return (
     <Pressable
-      onLongPress={() => {
-        Alert.alert('رپورٹ', 'غلط اسٹاک رپورٹ کریں؟', [
-          { text: 'منسوخ', style: 'cancel' },
-          {
-            text: 'رپورٹ کریں',
-            style: 'destructive',
-            onPress: () => onFlagStock(product.id, product.shopId),
-          },
-        ]);
-      }}
+      onLongPress={handleLongPress}
       delayLongPress={350}
       className="bg-white rounded-xl shadow-sm mb-2 px-4 py-3"
     >
@@ -41,7 +56,7 @@ export function ProductItem({
           <Text className="text-[15px] font-bold text-gray-900" numberOfLines={1}>
             {product.nameUrdu || product.name}
           </Text>
-          <Pressable onPress={() => onShopPress(product.shopId)}>
+          <Pressable onPress={handleShopPress}>
             <Text className="text-[13px] text-primary mt-1" numberOfLines={1}>
               {product.shop.name}
             </Text>
@@ -55,12 +70,12 @@ export function ProductItem({
           <Text className="text-lg font-bold text-primary">Rs. {product.price}</Text>
           {product.isCheapestNearby && (
             <View className="bg-amber-100 rounded-full px-2 py-0.5 mt-1">
-              <Text className="text-[10px] text-amber-700 font-semibold">سب سے سستا</Text>
+              <Text className="text-[10px] text-amber-700 font-semibold">{t('customer.cheapest_nearby')}</Text>
             </View>
           )}
           {product.isNearestWithStock && (
             <View className="bg-blue-100 rounded-full px-2 py-0.5 mt-1">
-              <Text className="text-[10px] text-blue-700 font-semibold">سب سے قریب</Text>
+              <Text className="text-[10px] text-blue-700 font-semibold">{t('customer.nearest')}</Text>
             </View>
           )}
         </View>
@@ -71,7 +86,7 @@ export function ProductItem({
 
         {!isInCart ? (
           <Pressable
-            onPress={() => onAddToOrder(product)}
+            onPress={handleAddPress}
             className="w-8 h-8 rounded-full bg-primary items-center justify-center"
           >
             <Ionicons name="add" size={18} color="white" />
@@ -85,3 +100,7 @@ export function ProductItem({
     </Pressable>
   );
 }
+
+// Export memoized component for performance
+export const ProductItem = memo(ProductItemComponent);
+ProductItem.displayName = 'ProductItem';

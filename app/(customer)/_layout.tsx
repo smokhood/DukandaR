@@ -4,12 +4,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { Tabs } from 'expo-router';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLanguage } from '../../src/hooks/useLanguage';
 import { getNotifications } from '../../src/services/notificationService';
 import { useAuthStore } from '../../src/store/authStore';
 
 export default function CustomerLayout() {
   const { user } = useAuthStore();
+  const { t, language } = useLanguage();
+  const [, forceUpdate] = useState(0);
+
+  // Force re-render when language changes
+  useEffect(() => {
+    console.log('[Customer Layout] Language changed to:', language);
+    console.log('[Customer Layout] t(common.search) =', t('common.search'));
+    console.log('[Customer Layout] t(customer.saved) =', t('customer.saved'));
+    forceUpdate(prev => prev + 1);
+  }, [language, t]);
 
   // Fetch notifications to get unread count
   const { data: notifications = [] } = useQuery({
@@ -19,7 +30,8 @@ export default function CustomerLayout() {
       return getNotifications(user.id);
     },
     enabled: !!user?.id,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 60000, // Refresh every 60 seconds instead of 30 for better performance
+    staleTime: 30000, // Consider data fresh for 30 seconds
   });
 
   // Calculate unread count
@@ -29,6 +41,7 @@ export default function CustomerLayout() {
 
   return (
     <Tabs
+      key={language}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: '#16a34a',
@@ -50,7 +63,7 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'تلاش',
+          title: t('common.search'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search" size={size} color={color} />
           ),
@@ -59,7 +72,7 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="favourites"
         options={{
-          title: 'پسندیدہ',
+          title: t('customer.saved'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="heart" size={size} color={color} />
           ),
@@ -68,7 +81,7 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          title: 'اطلاعات',
+          title: t('customer.notifications') || 'Notifications',
           tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="notifications" size={size} color={color} />
@@ -78,7 +91,7 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="my-orders"
         options={{
-          title: 'آرڈرز',
+          title: t('customer.orders') || 'Orders',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="receipt" size={size} color={color} />
           ),
@@ -97,7 +110,7 @@ export default function CustomerLayout() {
         }}
       />
       <Tabs.Screen
-        name="shop"
+        name="shop/[id]"
         options={{
           href: null,
         }}

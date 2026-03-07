@@ -27,6 +27,7 @@ import { z } from 'zod';
 import { CustomButton } from '../../src/components/CustomButton';
 import { LocationPicker } from '../../src/components/LocationPicker';
 import { TextInput } from '../../src/components/TextInput';
+import { useLanguage } from '../../src/hooks/useLanguage';
 
 const shopRegistrationSchema = z.object({
   name: z.string().min(2, 'Shop name required'),
@@ -47,13 +48,31 @@ const shopRegistrationSchema = z.object({
 type ShopFormData = z.infer<typeof shopRegistrationSchema>;
 
 export default function RegisterShopScreen() {
+  const { t, language } = useLanguage();
   const router = useRouter();
   const { user, setUser } = useAuthStore();
   const { location, area, city } = useLocationStore();
-  const { refreshLocation, isLocating } = useLocationViewModel();
+  const { refreshLocation, isLocating, permissionStatus } = useLocationViewModel();
 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Protection: If user already has a shop, redirect to dashboard
+  useEffect(() => {
+    if (user?.shopId) {
+      Alert.alert(
+        'Shop Already Registered',
+        'You already have a registered shop. You cannot register multiple shops with the same account.',
+        [
+          {
+            text: 'Go to Dashboard',
+            onPress: () => router.replace('/(owner)/dashboard'),
+          },
+        ],
+        { cancelable: false }
+      );
+    }
+  }, [user?.shopId, router]);
 
   const {
     control,
@@ -102,11 +121,48 @@ export default function RegisterShopScreen() {
 
   const handlePickLocation = useCallback(async () => {
     try {
+      // Check if permission is granted
+      if (permissionStatus !== 'granted') {
+        Alert.alert(
+          'Location Permission',
+          'This app needs location access to set your shop location. Please grant permission in the next step.',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+            {
+              text: 'Grant Permission',
+              onPress: async () => {
+                try {
+                  await refreshLocation();
+                  Alert.alert('Success', 'Location captured successfully!');
+                } catch (error) {
+                  Alert.alert(
+                    'Permission Denied',
+                    'Please enable location permission in your device settings to set shop location.'
+                  );
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      // Permission granted, get location
       await refreshLocation();
-    } catch {
-      Alert.alert('Error', 'Unable to fetch location. Please allow location permission.');
+      
+      // Show success message after location is captured
+      Alert.alert('Success', 'Location captured successfully!');
+    } catch (error) {
+      console.error('Location pick error:', error);
+      Alert.alert(
+        'Location Error',
+        'Unable to get your location. Please check:\n\n1. Location permission is granted\n2. GPS/Location services are enabled\n3. You have internet connection'
+      );
     }
-  }, [refreshLocation]);
+  }, [refreshLocation, permissionStatus]);
 
   const handleNextStep = useCallback(async () => {
     let isStepValid = true;
@@ -282,7 +338,7 @@ export default function RegisterShopScreen() {
                   value={field.value}
                   onChangeText={field.onChange}
                   onBlur={field.onBlur}
-                  placeholder="دکان کا نام (اردو)"
+                  placeholder={t('owner.shop_name_urdu')}
                   placeholderTextColor="#9ca3af"
                   editable={!isLoading}
                 />
@@ -321,8 +377,19 @@ export default function RegisterShopScreen() {
             <Text className="text-lg font-semibold text-gray-800 mb-2">
               Location
             </Text>
+            
+            {isLocating && (
+              <View className="flex-row items-center mb-2 p-2 bg-blue-50 rounded-lg">
+                <ActivityIndicator size="small" color="#3b82f6" />
+                <Text className="ml-2 text-blue-700 text-sm">
+                  Getting your location...
+                </Text>
+              </View>
+            )}
+            
             <LocationPicker
               onPress={handlePickLocation}
+              disabled={isLocating}
               location={location ? {
                 latitude: location.lat,
                 longitude: location.lng,

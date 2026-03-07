@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { StockStatus } from '@models/Product';
 import { Alert, Pressable, Text, View } from 'react-native';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface StockBadgeProps {
   status: StockStatus;
@@ -8,6 +9,7 @@ interface StockBadgeProps {
 }
 
 export function StockBadge({ status, size = 'sm' }: StockBadgeProps) {
+  const { t } = useLanguage();
   const isSmall = size === 'sm';
 
   if (status === 'in_stock') {
@@ -19,7 +21,7 @@ export function StockBadge({ status, size = 'sm' }: StockBadgeProps) {
       >
         <View className={`${isSmall ? 'w-1.5 h-1.5' : 'w-2 h-2'} rounded-full bg-green-600`} />
         <Text className={`${isSmall ? 'text-xs' : 'text-sm'} text-green-700 font-medium ml-1.5`}>
-          موجود
+          {t('customer.in_stock')}
         </Text>
       </View>
     );
@@ -34,7 +36,7 @@ export function StockBadge({ status, size = 'sm' }: StockBadgeProps) {
       >
         <View className={`${isSmall ? 'w-1.5 h-1.5' : 'w-2 h-2'} rounded-full bg-red-600`} />
         <Text className={`${isSmall ? 'text-xs' : 'text-sm'} text-red-700 font-medium ml-1.5`}>
-          ختم
+          {t('customer.out_of_stock')}
         </Text>
       </View>
     );
@@ -42,14 +44,14 @@ export function StockBadge({ status, size = 'sm' }: StockBadgeProps) {
 
   return (
     <Pressable
-      onPress={() => Alert.alert('اسٹاک معلومات', 'کسی نے ابھی تک تصدیق نہیں کی')}
+      onPress={() => Alert.alert(t('customer.stock_info_title'), t('customer.stock_unverified_message'))}
       className={`flex-row items-center rounded-full ${
         isSmall ? 'px-2 py-1' : 'px-3 py-1.5'
       } bg-orange-100`}
     >
       <Ionicons name="warning-outline" size={isSmall ? 12 : 14} color="#c2410c" />
       <Text className={`${isSmall ? 'text-xs' : 'text-sm'} text-orange-700 font-medium ml-1.5`}>
-        غیر تصدیق شدہ
+        {t('customer.stock_unverified')}
       </Text>
     </Pressable>
   );

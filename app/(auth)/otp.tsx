@@ -24,9 +24,11 @@ import Animated, {
     withSequence,
     withTiming,
 } from 'react-native-reanimated';
+import { useLanguage } from '../../src/hooks/useLanguage';
 import { useAuthViewModel } from '../../src/viewModels/useAuthViewModel';
 
 export default function OTPScreen() {
+  const { t, language } = useLanguage();
   const router = useRouter();
   const params = useLocalSearchParams<{ role?: UserRole }>();
   
@@ -136,7 +138,7 @@ export default function OTPScreen() {
     const code = otpCode || otp.join('');
     
     if (code.length !== 6) {
-      Alert.alert('خرابی', '6 digit OTP daalen');
+      Alert.alert(t('auth.error_title'), t('auth.enter_6_digit_otp'));
       return;
     }
 
@@ -154,7 +156,7 @@ export default function OTPScreen() {
       triggerShake();
       setOtp(['', '', '', '', '', '']);
       otpRefs.current[0]?.focus();
-      Alert.alert('خرابی', err.message || 'OTP غلط ہے');
+      Alert.alert(t('auth.error_title'), err.message || t('auth.otp_error'));
     } finally {
       setIsSubmitting(false);
     }
@@ -167,7 +169,7 @@ export default function OTPScreen() {
       setOtp(['', '', '', '', '', '']);
       otpRefs.current[0]?.focus();
     } catch (err: any) {
-      Alert.alert('خرابی', err.message);
+      Alert.alert(t('auth.error_title'), err.message);
     }
   };
 
@@ -204,7 +206,7 @@ export default function OTPScreen() {
               </Pressable>
             )}
             <Text className="text-white text-2xl font-bold flex-1 text-center">
-              DukandaR
+              {t('common.app_name')}
             </Text>
             {otpSent && <View className="w-10" />}
           </View>
@@ -215,10 +217,10 @@ export default function OTPScreen() {
             // STEP 1: Phone Input
             <View>
               <Text className="text-2xl font-bold text-gray-900 mb-2">
-                اپنا موبائل نمبر داخل کریں
+                {t('auth.enter_mobile_number')}
               </Text>
               <Text className="text-gray-600 mb-8">
-                ہم آپ کو OTP بھیجیں گے
+                {t('auth.we_will_send_otp')}
               </Text>
 
               {/* Phone Input */}
@@ -256,7 +258,7 @@ export default function OTPScreen() {
                   <ActivityIndicator color="white" />
                 ) : (
                   <Text className="text-white text-center font-semibold text-lg">
-                    OTP بھیجیں
+                    {t('auth.send_otp')}
                   </Text>
                 )}
               </Pressable>
@@ -265,14 +267,14 @@ export default function OTPScreen() {
             // STEP 2: OTP Input
             <Animated.View style={shakeStyle}>
               <Text className="text-2xl font-bold text-gray-900 mb-2">
-                OTP داخل کریں
+                {t('auth.enter_otp')}
               </Text>
               <View className="flex-row items-center justify-between mb-2">
                 <Text className="text-gray-600">
-                  {formatPhoneDisplay(storedPhone.replace('+92', ''))} پر OTP بھیجا گیا
+                  {t('auth.otp_sent_to')} {formatPhoneDisplay(storedPhone.replace('+92', ''))}
                 </Text>
                 <Pressable onPress={() => router.back()}>
-                  <Text className="text-primary font-medium">غلط نمبر؟</Text>
+                  <Text className="text-primary font-medium">{language === 'ur' ? 'غلط نمبر؟' : 'Wrong number?'}</Text>
                 </Pressable>
               </View>
 
@@ -323,7 +325,7 @@ export default function OTPScreen() {
                   <ActivityIndicator color="white" />
                 ) : (
                   <Text className="text-white text-center font-semibold text-lg">
-                    تصدیق کریں
+                    {t('auth.verify')}
                   </Text>
                 )}
               </Pressable>
@@ -332,12 +334,12 @@ export default function OTPScreen() {
               <View className="items-center">
                 {countdown > 0 ? (
                   <Text className="text-gray-600">
-                    {countdown} seconds میں دوبارہ بھیجیں
+                    {t('auth.resend_in')} {countdown} {t('auth.seconds')}
                   </Text>
                 ) : (
                   <Pressable onPress={handleResend}>
                     <Text className="text-primary font-semibold">
-                      دوبارہ بھیجیں
+                      {t('auth.resend_otp')}
                     </Text>
                   </Pressable>
                 )}

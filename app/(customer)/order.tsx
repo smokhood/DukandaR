@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { formatPrice } from '@utils/formatters';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
     Alert,
     Clipboard,
@@ -18,10 +18,12 @@ import {
     TextInput,
     View,
 } from 'react-native';
+import { useLanguage } from '../../src/hooks/useLanguage';
 import * as shopService from '../../src/services/shopService';
 import { useOrderViewModel } from '../../src/viewModels/useOrderViewModel';
 
 export default function OrderScreen() {
+  const { t, language } = useLanguage();
   const router = useRouter();
   const {
     items,
@@ -49,48 +51,48 @@ export default function OrderScreen() {
     enabled: !!shopId,
   });
 
-  const handleNoteChange = (text: string) => {
+  const handleNoteChange = useCallback((text: string) => {
     setNoteText(text);
     updateNote(text);
-  };
+  }, [updateNote]);
 
-  const handleIncrement = (productId: string) => {
+  const handleIncrement = useCallback((productId: string) => {
     const item = items.find((i) => i.productId === productId);
     if (item) {
       updateQuantity(productId, item.quantity + 1);
     }
-  };
+  }, [items, updateQuantity]);
 
-  const handleDecrement = (productId: string) => {
+  const handleDecrement = useCallback((productId: string) => {
     const item = items.find((i) => i.productId === productId);
     if (item) {
       if (item.quantity === 1) {
         Alert.alert(
-          'آئٹم ہٹائیں؟',
-          'کیا آپ اس چیز کو آرڈر سے ہٹانا چاہتے ہیں؟',
+          t('customer.remove_item'),
+          t('customer.remove_item_confirm'),
           [
-            { text: 'نہیں', style: 'cancel' },
-            { text: 'ہاں', onPress: () => removeItem(productId) },
+            { text: t('common.no'), style: 'cancel' },
+            { text: t('common.yes'), onPress: () => removeItem(productId) },
           ]
         );
       } else {
         updateQuantity(productId, item.quantity - 1);
       }
     }
-  };
+  }, [items, removeItem, t, updateQuantity]);
 
-  const handleRemove = (productId: string) => {
+  const handleRemove = useCallback((productId: string) => {
     removeItem(productId);
-  };
+  }, [removeItem]);
 
-  const handleClearCart = () => {
+  const handleClearCart = useCallback(() => {
     Alert.alert(
-      'آرڈر خالی کریں؟',
-      'کیا آپ سارا آرڈر ختم کرنا چاہتے ہیں؟',
+      t('customer.clear_cart_title'),
+      t('customer.clear_cart_confirm'),
       [
-        { text: 'نہیں', style: 'cancel' },
+        { text: t('common.no'), style: 'cancel' },
         {
-          text: 'ہاں',
+          text: t('common.yes'),
           style: 'destructive',
           onPress: () => {
             clearCart();
@@ -99,9 +101,9 @@ export default function OrderScreen() {
         },
       ]
     );
-  };
+  }, [clearCart, router, t]);
 
-  const handleSendOrder = async () => {
+  const handleSendOrder = useCallback(async () => {
     try {
       await sendOrderViaWhatsApp();
       // After alert dismissed, navigate back
@@ -111,12 +113,12 @@ export default function OrderScreen() {
     } catch (error) {
       // Error already shown in alert
     }
-  };
+  }, [router, sendOrderViaWhatsApp]);
 
-  const copyToClipboard = (text: string, label: string) => {
+  const copyToClipboard = useCallback((text: string, label: string) => {
     Clipboard.setString(text);
-    Alert.alert('کاپی ہو گیا! ✅', `${label} کاپی ہو گیا ہے`);
-  };
+    Alert.alert(t('customer.copied'), `${label} ${t('customer.has_been_copied')}`);
+  }, [t]);
 
   if (isEmpty) {
     return (
@@ -129,15 +131,15 @@ export default function OrderScreen() {
           >
             <Ionicons name="arrow-back" size={24} color="black" />
           </Pressable>
-          <Text className="text-xl font-bold text-gray-900 ml-3">میرا آرڈر</Text>
+          <Text className="text-xl font-bold text-gray-900 ml-3">{t('customer.my_order')}</Text>
         </View>
 
         <View className="flex-1 items-center justify-center">
           <EmptyState
             variant="empty_orders"
-            title="آرڈر خالی ہے"
-            subtitle="ابھی تک کوئی چیز شامل نہیں کی"
-            actionLabel="دکانیں تلاش کریں"
+            title={t('customer.my_order')}
+            subtitle={t('customer.nothing_added_yet')}
+            actionLabel={t('customer.search_shops')}
             onAction={() => router.back()}
           />
         </View>
@@ -160,7 +162,7 @@ export default function OrderScreen() {
             <Ionicons name="arrow-back" size={24} color="black" />
           </Pressable>
           <View className="ml-3 flex-1">
-            <Text className="text-xl font-bold text-gray-900">میرا آرڈر</Text>
+            <Text className="text-xl font-bold text-gray-900">{t('customer.my_order')}</Text>
             <Text className="text-sm text-gray-500" numberOfLines={1}>
               {shopName}
             </Text>
@@ -186,7 +188,7 @@ export default function OrderScreen() {
                   color={isCurrentlyOpen ? '#10b981' : '#ef4444'}
                 />
                 <Text className="text-gray-600 text-sm ml-1">
-                  {isCurrentlyOpen ? 'کھلا' : 'بند'}
+                  {isCurrentlyOpen ? t('customer.open') : t('customer.shop_closed')}
                 </Text>
               </View>
             </View>
@@ -196,7 +198,7 @@ export default function OrderScreen() {
         {/* Order Items */}
         <View className="px-4 py-2">
           <Text className="text-gray-700 font-semibold text-lg mb-3">
-            آرڈر کی تفصیلات
+            {t('customer.order_details')}
           </Text>
           {items.map((item) => (
             <OrderItem
@@ -219,7 +221,7 @@ export default function OrderScreen() {
               <View className="flex-row items-center mb-3">
                 <Text className="text-lg">💳</Text>
                 <Text className="text-gray-900 font-semibold text-base ml-2">
-                  ادائیگی کی معلومات
+                  {t('customer.payment_information')}
                 </Text>
               </View>
 
@@ -235,7 +237,7 @@ export default function OrderScreen() {
                     onPress={() =>
                       copyToClipboard(
                         shop.payment.jazzCashNumber!,
-                        'JazzCash نمبر'
+                        t('customer.jazzcash_number')
                       )
                     }
                     className="bg-gray-200 rounded-lg p-2"
@@ -257,7 +259,7 @@ export default function OrderScreen() {
                     onPress={() =>
                       copyToClipboard(
                         shop.payment.easyPaisaNumber!,
-                        'EasyPaisa نمبر'
+                        t('customer.easypaisa_number')
                       )
                     }
                     className="bg-gray-200 rounded-lg p-2"
@@ -268,7 +270,7 @@ export default function OrderScreen() {
               )}
 
               <Text className="text-gray-500 text-xs mt-2">
-                آرڈر کے بعد ادائیگی کریں
+                {t('customer.make_payment_after')}
               </Text>
             </View>
           )}
@@ -276,15 +278,15 @@ export default function OrderScreen() {
         {/* Add Note */}
         <View className="bg-white mx-4 rounded-xl p-4 mb-4">
           <Text className="text-gray-900 font-semibold text-base mb-2">
-            نوٹ شامل کریں (اختیاری)
+            {t('customer.add_note_optional')}
           </Text>
           <Text className="text-gray-500 text-sm mb-3">
-            گھر پر ڈیلیوری؟ خاص ہدایات؟
+            {t('customer.delivery_instructions')}
           </Text>
           <TextInput
             value={noteText}
             onChangeText={handleNoteChange}
-            placeholder="اپنا نوٹ یہاں لکھیں..."
+            placeholder={t('customer.write_note_here')}
             multiline={true}
             numberOfLines={3}
             maxLength={200}
@@ -300,7 +302,7 @@ export default function OrderScreen() {
         <View className="bg-gray-100 mx-4 rounded-xl p-4 mb-4">
           <View className="flex-row justify-between mb-2">
             <Text className="text-gray-700 text-base">
-              چیزیں ({totalItems})
+              {t('customer.order_items')} ({totalItems})
             </Text>
             <Text className="text-gray-900 font-semibold text-base">
               {formatPrice(totalPrice)}
@@ -310,7 +312,7 @@ export default function OrderScreen() {
           <View className="border-t border-gray-300 my-2" />
 
           <View className="flex-row justify-between">
-            <Text className="text-gray-900 font-bold text-lg">کل</Text>
+            <Text className="text-gray-900 font-bold text-lg">{t('customer.order_total')}</Text>
             <Text className="text-green-600 font-bold text-xl">
               {formatPrice(totalPrice)}
             </Text>
@@ -325,12 +327,12 @@ export default function OrderScreen() {
       <View className="absolute bottom-0 left-0 right-0 bg-white p-4 border-t border-gray-200">
         <WhatsAppButton
           onPress={handleSendOrder}
-          label="💬 واٹس ایپ پر آرڈر بھیجیں"
+          label={t('customer.send_order_whatsapp')}
           size="lg"
           disabled={isLoading}
         />
         <Text className="text-gray-500 text-center text-xs mt-2">
-          آرڈر دکاندار کو واٹس ایپ پر جائے گا
+          {t('customer.order_will_be_sent')}
         </Text>
       </View>
     </View>

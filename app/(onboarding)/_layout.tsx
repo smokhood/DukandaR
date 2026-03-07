@@ -11,7 +11,6 @@ export default function OnboardingLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animationEnabled: true,
         animationTypeForReplace: 'push',
       }}
     >

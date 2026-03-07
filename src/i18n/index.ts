@@ -32,6 +32,8 @@ i18n.use(initReactI18next).init({
   },
   react: {
     useSuspense: false,
+    bindI18n: 'languageChanged', // Re-render on language change
+    bindI18nStore: 'added removed', // Re-render on store changes
   },
 });
 

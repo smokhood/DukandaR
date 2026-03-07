@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { CustomButton } from '../../src/components/CustomButton';
 import { TextInput } from '../../src/components/TextInput';
+import { useLanguage } from '../../src/hooks/useLanguage';
 
 interface TemplateOption {
   id: string;
@@ -41,6 +42,7 @@ const templates: TemplateOption[] = [
 
 export default function CatalogBuilderScreen() {
   const { user } = useAuthStore();
+  const { t } = useLanguage();
 
     // Fetch shop data
     const { data: shop, isLoading: isLoadingShop } = useQuery({
@@ -70,10 +72,16 @@ export default function CatalogBuilderScreen() {
 
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
   const [showPrice, setShowPrice] = useState(false);
+
+  const currentTemplateItems = useMemo(() => {
+    const template = templates.find((t) => t.id === activeTemplate);
+    return template ? filteredItems(template.items) : [];
+  }, [activeTemplate, filteredItems]);
+
   if (isLoadingShop) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
-        <Text className="text-gray-600">Loading shop data...</Text>
+        <Text className="text-gray-600">{t('owner.loading_shop_data')}</Text>
       </View>
     );
   }
@@ -82,20 +90,15 @@ export default function CatalogBuilderScreen() {
     return (
       <View className="flex-1 items-center justify-center bg-white p-4">
         <Text className="text-lg font-semibold text-gray-800 mb-2">
-          Shop Not Registered
+          {t('owner.shop_not_registered')}
         </Text>
         <Text className="text-sm text-gray-600 text-center">
-          Please register your shop first
+          {t('owner.register_shop_first')}
         </Text>
       </View>
     );
   }
 
-
-  const currentTemplateItems = useMemo(() => {
-    const template = templates.find((t) => t.id === activeTemplate);
-    return template ? filteredItems(template.items) : [];
-  }, [activeTemplate, filteredItems]);
 
   const handleSelectTemplate = (templateId: string) => {
     setActiveTemplate(activeTemplate === templateId ? null : templateId);

@@ -8,6 +8,7 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface WhatsAppButtonProps {
   onPress: () => void;
@@ -21,12 +22,14 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function WhatsAppButton({
   onPress,
-  label = 'واٹس ایپ پر آرڈر',
+  label,
   size = 'md',
   disabled = false,
   itemCount,
 }: WhatsAppButtonProps) {
+  const { t } = useLanguage();
   const scale = useSharedValue(1);
+  const buttonLabel = label ?? t('customer.order_on_whatsapp');
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -83,7 +86,7 @@ export function WhatsAppButton({
           style={{ marginRight: 8 }}
         />
         <Text className={`text-white font-bold ${textSizeClasses[size]}`}>
-          {label}
+          {buttonLabel}
         </Text>
       </AnimatedPressable>
 

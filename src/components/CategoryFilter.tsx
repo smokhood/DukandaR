@@ -9,6 +9,7 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface CategoryFilterProps {
   selected: string;
@@ -23,6 +24,8 @@ export function CategoryFilter({
   onSelect,
   showAll = true,
 }: CategoryFilterProps) {
+  const { language, t } = useLanguage();
+
   return (
     <ScrollView
       horizontal={true}
@@ -33,7 +36,7 @@ export function CategoryFilter({
       {showAll && (
         <CategoryPill
           id="all"
-          label="سب"
+          label={t('customer.all')}
           icon="grid"
           selected={selected === 'all'}
           onPress={() => onSelect('all')}
@@ -44,7 +47,7 @@ export function CategoryFilter({
         <CategoryPill
           key={category.id}
           id={category.id}
-          label={category.nameUrdu}
+          label={language === 'ur' ? category.nameUrdu : category.name}
           icon={category.icon}
           selected={selected === category.id}
           onPress={() => onSelect(category.id)}

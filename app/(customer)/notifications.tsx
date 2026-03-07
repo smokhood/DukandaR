@@ -16,6 +16,7 @@ import {
     View
 } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
+import { useLanguage } from '../../src/hooks/useLanguage';
 import { deleteNotification, getNotifications, markAsRead } from '../../src/services/notificationService';
 import { useAuthStore } from '../../src/store/authStore';
 
@@ -26,6 +27,7 @@ interface GroupedNotifications {
 }
 
 export default function NotificationsScreen() {
+  const { t, language } = useLanguage();
   const router = useRouter();
   const { user } = useAuthStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -158,7 +160,7 @@ export default function NotificationsScreen() {
           <Text className="text-gray-600 text-xs mt-1">{notification.body}</Text>
         </View>
         <Text className="text-gray-500 text-xs ml-2">
-          {formatTimeAgo(notification.createdAt.toDate())}
+          {formatTimeAgo(notification.createdAt.toDate(), t)}
         </Text>
       </TouchableOpacity>
     </Swipeable>
@@ -171,16 +173,16 @@ export default function NotificationsScreen() {
     notifsByTime.older.some((n) => !n.read);
 
   const sections = [
-    { title: 'آج', data: notifsByTime.today },
-    { title: 'اس ہفتہ', data: notifsByTime.thisWeek },
-    { title: 'پرانی', data: notifsByTime.older },
+    { title: t('customer.today'), data: notifsByTime.today },
+    { title: t('customer.this_week'), data: notifsByTime.thisWeek },
+    { title: t('customer.older'), data: notifsByTime.older },
   ].filter((s) => s.data.length > 0);
 
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
       <View className="bg-white px-6 py-4 border-b border-gray-200 flex-row items-center justify-between">
-        <Text className="text-2xl font-bold text-gray-900">اطلاعات</Text>
+        <Text className="text-2xl font-bold text-gray-900">{t('customer.notifications')}</Text>
         {hasUnread && (
           <TouchableOpacity
             onPress={() => {
@@ -192,7 +194,7 @@ export default function NotificationsScreen() {
             }}
             className="px-3 py-1"
           >
-            <Text className="text-xs font-semibold text-green-600">سب پڑھا</Text>
+            <Text className="text-xs font-semibold text-green-600">{t('customer.mark_all_read')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -206,7 +208,10 @@ export default function NotificationsScreen() {
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-4xl mb-4">🔔</Text>
           <Text className="text-lg font-semibold text-gray-900">
-            کوئی اطلاع نہیں
+            {t('customer.no_notifications')}
+          </Text>
+          <Text className="text-sm text-gray-600 mt-2">
+            {t('customer.all_caught_up')}
           </Text>
         </View>
       ) : (
@@ -238,15 +243,15 @@ export default function NotificationsScreen() {
   );
 }
 
-function formatTimeAgo(date: Date): string {
+function formatTimeAgo(date: Date, t: (key: string, options?: any) => string): string {
   const now = new Date();
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  if (seconds < 60) return 'ابھی';
+  if (seconds < 60) return t('customer.just_now');
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m پہلے`;
+  if (minutes < 60) return t('customer.minutes_ago_short', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h پہلے`;
+  if (hours < 24) return t('customer.hours_ago_short', { count: hours });
   const days = Math.floor(hours / 24);
-  return `${days}d پہلے`;
+  return t('customer.days_ago_short', { count: days });
 }

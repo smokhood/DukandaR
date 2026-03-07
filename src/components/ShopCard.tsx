@@ -5,12 +5,14 @@ import { Ionicons } from '@expo/vector-icons';
 import type { Shop } from '@models/Shop';
 import { formatDistance } from '@utils/formatters';
 import { Image } from 'expo-image';
+import { memo, useCallback } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface ShopWithDistance extends Shop {
   distance?: number;
@@ -25,27 +27,28 @@ interface ShopCardProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function ShopCard({
+function ShopCardComponent({
   shop,
   onPress,
   onWhatsAppPress,
   variant = 'full',
 }: ShopCardProps) {
+  const { t } = useLanguage();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  const handlePressIn = () => {
+  const handlePressIn = useCallback(() => {
     scale.value = withSpring(0.97, { damping: 15, stiffness: 200 });
-  };
+  }, []);
 
-  const handlePressOut = () => {
+  const handlePressOut = useCallback(() => {
     scale.value = withSpring(1, { damping: 15, stiffness: 200 });
-  };
+  }, []);
 
-  const getCategoryColor = (category: string) => {
+  const getCategoryColor = useCallback((category: string) => {
     const colors: Record<string, string> = {
       kiryana: '#16a34a',
       pharmacy: '#ef4444',
@@ -59,7 +62,7 @@ export function ShopCard({
       other: '#64748b',
     };
     return colors[category] || '#64748b';
-  };
+  }, []);
 
   if (variant === 'compact') {
     return (
@@ -81,6 +84,8 @@ export function ShopCard({
                 source={{ uri: shop.photoUrl }}
                 className="w-full h-full"
                 contentFit="cover"
+                cachePolicy="memory-disk"
+                priority="high"
               />
             ) : (
               <View className="w-full h-full items-center justify-center">
@@ -115,7 +120,7 @@ export function ShopCard({
                 }`}
               />
               <Text className="text-xs text-gray-600 ml-1">
-                {shop.isOpen ? 'کھلا' : 'بند'}
+                {shop.isOpen ? t('customer.open') : t('customer.closed')}
               </Text>
             </View>
           </View>
@@ -143,6 +148,8 @@ export function ShopCard({
               source={{ uri: shop.photoUrl }}
               className="w-full h-full"
               contentFit="cover"
+              cachePolicy="memory-disk"
+              priority="normal"
             />
           ) : (
             <View className="w-full h-full items-center justify-center">
@@ -194,7 +201,7 @@ export function ShopCard({
               }`}
             />
             <Text className="text-sm text-gray-600 ml-1">
-              {shop.isOpen ? 'کھلا' : 'بند'}
+              {shop.isOpen ? t('customer.open') : t('customer.closed')}
             </Text>
           </View>
         </View>
@@ -204,8 +211,8 @@ export function ShopCard({
       <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-gray-100">
         <Text className="text-xs text-gray-600">
           {shop.isOpen
-            ? `${shop.hours.closeTime} تک کھلا`
-            : 'ابھی بند ہے'}
+            ? t('customer.open_until_time', { time: shop.hours.closeTime })
+            : t('customer.currently_closed')}
         </Text>
 
         <Pressable
@@ -224,3 +231,7 @@ export function ShopCard({
     </AnimatedPressable>
   );
 }
+
+// Export memoized component for performance
+export const ShopCard = memo(ShopCardComponent);
+ShopCard.displayName = 'ShopCard';

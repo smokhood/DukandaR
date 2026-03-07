@@ -8,6 +8,7 @@ import Animated, {
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface SearchBarProps {
   value: string;
@@ -24,11 +25,13 @@ export function SearchBar({
   onChangeText,
   onSubmit,
   onClear,
-  placeholder = 'کیا ڈھونڈ رہے ہیں؟',
+  placeholder,
   autoFocus = false,
   editable = true,
 }: SearchBarProps) {
+  const { t } = useLanguage();
   const scale = useSharedValue(1);
+  const resolvedPlaceholder = placeholder ?? t('customer.what_are_you_looking_for');
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -57,7 +60,7 @@ export function SearchBar({
       
       <TextInput
         className="flex-1 mx-3 text-base"
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
         placeholderTextColor="#9ca3af"
         value={value}
         onChangeText={onChangeText}

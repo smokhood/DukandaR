@@ -3,6 +3,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
+import { useLanguage } from '../hooks/useLanguage';
 
 type EmptyStateVariant =
   | 'no_results'
@@ -21,51 +22,6 @@ interface EmptyStateProps {
   onAction?: () => void;
 }
 
-const variantConfig: Record<
-  EmptyStateVariant,
-  {
-    icon: string;
-    title: string;
-    subtitle: string;
-  }
-> = {
-  no_results: {
-    icon: 'search',
-    title: 'کچھ نہیں ملا',
-    subtitle: 'دوسرے الفاظ آزمائیں یا فلٹر تبدیل کریں',
-  },
-  no_shops: {
-    icon: 'storefront',
-    title: 'قریب کوئی دکان نہیں',
-    subtitle: 'علاقہ بدلیں یا سرچ کا دائرہ بڑھائیں',
-  },
-  offline: {
-    icon: 'cloud-offline',
-    title: 'انٹرنیٹ نہیں',
-    subtitle: 'پرانا ڈیٹا دکھا رہے ہیں',
-  },
-  permission_denied: {
-    icon: 'location',
-    title: 'لوکیشن کی اجازت دیں',
-    subtitle: 'قریبی دکانیں ڈھونڈنے کے لیے لوکیشن ضروری ہے',
-  },
-  empty_favourites: {
-    icon: 'heart-outline',
-    title: 'کوئی پسندیدہ دکان نہیں',
-    subtitle: 'دکانوں کو پسندیدہ کریں تاکہ جلدی سے مل سکیں',
-  },
-  empty_catalog: {
-    icon: 'list',
-    title: 'کیٹلاگ خالی ہے',
-    subtitle: 'اپنی دکان کے پروڈکٹس شامل کریں',
-  },
-  empty_orders: {
-    icon: 'receipt',
-    title: 'ابھی تک کوئی آرڈر نہیں',
-    subtitle: 'جب آپ آرڈر کریں گے تو یہاں نظر آئیں گے',
-  },
-};
-
 export function EmptyState({
   variant,
   title,
@@ -73,6 +29,53 @@ export function EmptyState({
   actionLabel,
   onAction,
 }: EmptyStateProps) {
+  const { t } = useLanguage();
+
+  const variantConfig: Record<
+    EmptyStateVariant,
+    {
+      icon: string;
+      title: string;
+      subtitle: string;
+    }
+  > = {
+    no_results: {
+      icon: 'search',
+      title: t('customer.no_results'),
+      subtitle: t('customer.try_different_search'),
+    },
+    no_shops: {
+      icon: 'storefront',
+      title: t('customer.no_shops_found'),
+      subtitle: t('customer.select_search_range'),
+    },
+    offline: {
+      icon: 'cloud-offline',
+      title: t('customer.no_internet'),
+      subtitle: t('customer.showing_cached_data'),
+    },
+    permission_denied: {
+      icon: 'location',
+      title: t('customer.enable_location_permission'),
+      subtitle: t('customer.location_required_for_nearby'),
+    },
+    empty_favourites: {
+      icon: 'heart-outline',
+      title: t('customer.no_favourite_shops'),
+      subtitle: t('customer.favourite_to_find_quickly'),
+    },
+    empty_catalog: {
+      icon: 'list',
+      title: t('customer.empty_catalog'),
+      subtitle: t('customer.add_products_to_shop'),
+    },
+    empty_orders: {
+      icon: 'receipt',
+      title: t('customer.no_orders_yet'),
+      subtitle: t('customer.orders_will_appear_here'),
+    },
+  };
+
   const config = variantConfig[variant];
 
   return (

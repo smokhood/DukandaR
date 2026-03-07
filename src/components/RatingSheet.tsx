@@ -13,6 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useLanguage } from '../hooks/useLanguage';
 import { CustomButton } from './CustomButton';
 
 interface RatingSheetProps {
@@ -30,13 +31,14 @@ export function RatingSheet({
   onSubmit,
   onCancel,
 }: RatingSheetProps) {
+  const { t } = useLanguage();
   const [rating, setRating] = useState(0);
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = useCallback(async () => {
     if (rating === 0) {
-      Alert.alert('رے ٹنگ درکار', 'براہ کرم سٹار کے ذریعے ریٹ کریں');
+      Alert.alert(t('customer.rating_required_title'), t('customer.rating_required_message'));
       return;
     }
 
@@ -46,11 +48,11 @@ export function RatingSheet({
       setRating(0);
       setNote('');
     } catch (error) {
-      Alert.alert('خرابی', 'ریٹنگ جمع کرنے میں خرابی');
+      Alert.alert(t('customer.error'), t('customer.rating_save_failed'));
     } finally {
       setIsSubmitting(false);
     }
-  }, [rating, note, onSubmit]);
+  }, [note, onSubmit, rating, t]);
 
   return (
     <Modal
@@ -68,10 +70,10 @@ export function RatingSheet({
 
           {/* Title */}
           <Text className="text-xl font-bold text-gray-900 mb-2">
-            {shopName} کو ریٹ کریں
+            {t('customer.rate_shop_with_name', { shopName })}
           </Text>
           <Text className="text-sm text-gray-600 mb-6">
-            آپ کی رائے ہمارے لیے اہم ہے
+            {t('customer.your_feedback_matters')}
           </Text>
 
           {/* Star Rating */}
@@ -93,7 +95,7 @@ export function RatingSheet({
 
           {/* Note Input */}
           <TextInput
-            placeholder="اختیاری: اپنی رائے لکھیں"
+            placeholder={t('customer.optional_feedback_placeholder')}
             placeholderTextColor="#9ca3af"
             value={note}
             onChangeText={setNote}
@@ -112,7 +114,7 @@ export function RatingSheet({
           {/* Buttons */}
           <View className="gap-3">
             <CustomButton
-              title="جمع کروائیں"
+              title={t('customer.submit_rating')}
               onPress={handleSubmit}
               disabled={isSubmitting}
             />
@@ -122,7 +124,7 @@ export function RatingSheet({
               className="py-4"
             >
               <Text className="text-center text-gray-600 font-medium">
-                بعد میں
+                {t('customer.later')}
               </Text>
             </TouchableOpacity>
           </View>

@@ -3,12 +3,14 @@
  */
 import type { Deal } from '@models/Deal';
 import { formatPrice } from '@utils/formatters';
+import { memo, useCallback, useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
     withSpring,
 } from 'react-native-reanimated';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface DealCardProps {
   deal: Deal;
@@ -17,22 +19,23 @@ interface DealCardProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function DealCard({ deal, onPress }: DealCardProps) {
+function DealCardComponent({ deal, onPress }: DealCardProps) {
+  const { t } = useLanguage();
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  const handlePressIn = () => {
+  const handlePressIn = useCallback(() => {
     scale.value = withSpring(0.97, { damping: 15, stiffness: 200 });
-  };
+  }, []);
 
-  const handlePressOut = () => {
+  const handlePressOut = useCallback(() => {
     scale.value = withSpring(1, { damping: 15, stiffness: 200 });
-  };
+  }, []);
 
-  const getTimeRemaining = () => {
+  const timeRemaining = useMemo(() => {
     const now = new Date();
     const expiry = deal.expiresAt.toDate();
     const hoursRemaining = Math.floor(
@@ -43,13 +46,13 @@ export function DealCard({ deal, onPress }: DealCardProps) {
       const minutesRemaining = Math.floor(
         (expiry.getTime() - now.getTime()) / (1000 * 60)
       );
-      return `${minutesRemaining} منٹ باقی`;
+      return t('customer.minutes_remaining', { count: minutesRemaining });
     } else if (hoursRemaining < 24) {
-      return `${hoursRemaining} گھنٹے باقی`;
+      return t('customer.hours_remaining', { count: hoursRemaining });
     } else {
-      return 'صرف آج';
+      return t('customer.today_only');
     }
-  };
+  }, [deal.expiresAt, t]);
 
   return (
     <AnimatedPressable
@@ -83,14 +86,16 @@ export function DealCard({ deal, onPress }: DealCardProps) {
           </View>
 
           {/* Time remaining */}
-          <Text className="text-gray-600 text-xs">{getTimeRemaining()}</Text>
+          <Text className="text-gray-600 text-xs">{timeRemaining}</Text>
         </View>
 
         {/* Savings Badge */}
         <View className="items-end">
           <View className="bg-green-500 rounded-lg px-2 py-1 mb-1">
             <Text className="text-white font-semibold text-xs">
-              {formatPrice(deal.savingsAmount)} بچائیں
+              {t('customer.save_amount', {
+                amount: formatPrice(deal.savingsAmount),
+              })}
             </Text>
           </View>
           <View className="bg-amber-500 rounded-lg px-2 py-1">
@@ -110,3 +115,7 @@ export function DealCard({ deal, onPress }: DealCardProps) {
     </AnimatedPressable>
   );
 }
+
+// Export memoized component for performance
+export const DealCard = memo(DealCardComponent);
+DealCard.displayName = 'DealCard';
