@@ -12,6 +12,7 @@ import { getShopById } from '@services/shopService';
 import { useAuthStore } from '@store/authStore';
 import { useQuery } from '@tanstack/react-query';
 import { useCatalogViewModel } from '@viewModels/useCatalogViewModel';
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
     Alert,
@@ -43,6 +44,7 @@ const templates: TemplateOption[] = [
 export default function CatalogBuilderScreen() {
   const { user } = useAuthStore();
   const { t } = useLanguage();
+  const router = useRouter();
 
     // Fetch shop data
     const { data: shop, isLoading: isLoadingShop } = useQuery({
@@ -256,6 +258,14 @@ export default function CatalogBuilderScreen() {
 
   return (
     <ScrollView className="flex-1 bg-white p-4">
+      <TouchableOpacity
+        onPress={() => router.push('/(owner)/add-product' as any)}
+        className="mb-4 p-3 rounded-lg border border-green-300 bg-green-50"
+      >
+        <Text className="text-green-800 font-semibold text-center">
+          + Add a Custom Product (Not in template)
+        </Text>
+      </TouchableOpacity>
       {/* Template Selection */}
       <Text className="text-xl font-bold text-gray-800 mb-4">
         Select Template

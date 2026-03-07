@@ -129,17 +129,50 @@ export default function ShopDetailScreen() {
     }
   }, [shop?.whatsapp, shop?.name, t]);
 
-  const handleDirections = useCallback(() => {
-    if (shop?.location) {
-      const url = Platform.select({
-        ios: `maps://app?daddr=${shop.location.latitude},${shop.location.longitude}`,
-        android: `google.navigation:q=${shop.location.latitude},${shop.location.longitude}`,
-      });
-      if (url) {
-        Linking.openURL(url);
+  const handleDirections = useCallback(async () => {
+    if (!shop?.location) {
+      Alert.alert(t('customer.error'), 'Shop location is not available.');
+      return;
+    }
+
+    const lat = Number(shop.location.latitude);
+    const lng = Number(shop.location.longitude);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      Alert.alert(t('customer.error'), 'Invalid shop location coordinates.');
+      return;
+    }
+
+    const label = encodeURIComponent(shop.name || 'Shop');
+    const universalMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+
+    const candidateUrls =
+      Platform.OS === 'android'
+        ? [
+            `google.navigation:q=${lat},${lng}`,
+            `geo:0,0?q=${lat},${lng}(${label})`,
+            universalMapsUrl,
+          ]
+        : [
+            `maps://?daddr=${lat},${lng}`,
+            `http://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
+            universalMapsUrl,
+          ];
+
+    for (const url of candidateUrls) {
+      try {
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+          await Linking.openURL(url);
+          return;
+        }
+      } catch {
+        // Try next URL fallback.
       }
     }
-  }, [shop?.location]);
+
+    Alert.alert(t('customer.error'), 'Unable to open maps app for directions.');
+  }, [shop?.location, shop?.name, t]);
 
   const handleAddToCart = useCallback((product: Product, overridePrice?: number) => {
     const { addItem, setShop } = useCartStore.getState();

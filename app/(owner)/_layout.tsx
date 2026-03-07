@@ -90,6 +90,12 @@ export default function OwnerLayout() {
           href: null, // Hide from tab bar
         }}
       />
+      <Tabs.Screen
+        name="add-product"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
     </Tabs>
   );
 }

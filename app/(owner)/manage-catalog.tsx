@@ -261,12 +261,20 @@ export default function ManageCatalogScreen() {
           <Text className="text-xl font-bold text-gray-800">
             {products.length} Products
           </Text>
-          <TouchableOpacity
-            onPress={() => router.push('/(owner)/catalog-builder')}
-            className="p-2 bg-red-100 rounded-lg"
-          >
-            <Text className="text-2xl">➕</Text>
-          </TouchableOpacity>
+          <View className="flex-row space-x-2">
+            <TouchableOpacity
+              onPress={() => router.push('/(owner)/add-product' as any)}
+              className="px-3 py-2 bg-green-100 rounded-lg"
+            >
+              <Text className="text-sm font-semibold text-green-800">+ Custom</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/(owner)/catalog-builder')}
+              className="px-3 py-2 bg-red-100 rounded-lg"
+            >
+              <Text className="text-sm font-semibold text-red-800">+ Template</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -314,10 +322,16 @@ export default function ManageCatalogScreen() {
       {products.length === 0 && (
         <View className="flex-1 items-center justify-center">
           <Text className="text-gray-600">No products yet</Text>
-          <CustomButton
-            title="Add Products from Template"
-            onPress={() => router.push('/(owner)/catalog-builder')}
-          />
+          <View className="mt-4 w-64 space-y-3">
+            <CustomButton
+              title="Add Custom Product"
+              onPress={() => router.push('/(owner)/add-product' as any)}
+            />
+            <CustomButton
+              title="Add Products from Template"
+              onPress={() => router.push('/(owner)/catalog-builder')}
+            />
+          </View>
         </View>
       )}
     </View>

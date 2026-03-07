@@ -7,6 +7,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Shop } from '@models/Shop';
 import { db } from '@services/firebase';
+import {
+    getAreaFromCoords,
+    getCurrentLocation,
+    requestLocationPermission,
+} from '@services/locationService';
 import { createShop } from '@services/shopService';
 import { useAuthStore } from '@store/authStore';
 import { useLocationStore } from '@store/locationStore';
@@ -14,7 +19,7 @@ import { useLocationViewModel } from '@viewModels/useLocationViewModel';
 import { useRouter } from 'expo-router';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useCallback, useEffect, useState } from 'react';
-import { Controller, FieldErrors, useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import {
     ActivityIndicator,
     Alert,
@@ -25,14 +30,32 @@ import {
 } from 'react-native';
 import { z } from 'zod';
 import { CustomButton } from '../../src/components/CustomButton';
+import { LocationMapModal } from '../../src/components/LocationMapModal';
 import { LocationPicker } from '../../src/components/LocationPicker';
 import { TextInput } from '../../src/components/TextInput';
 import { useLanguage } from '../../src/hooks/useLanguage';
 
+const PAK_PHONE_REGEX = /^\+92\d{10}$/;
+
+const normalizePhoneInput = (value: string): string => {
+  const digits = (value || '').replace(/\D/g, '');
+  if (!digits) return '';
+
+  if (digits.startsWith('92')) {
+    return `+${digits.slice(0, 12)}`;
+  }
+
+  if (digits.startsWith('0')) {
+    return `+92${digits.slice(1, 11)}`;
+  }
+
+  return `+92${digits.slice(0, 10)}`;
+};
+
 const shopRegistrationSchema = z.object({
-  name: z.string().min(2, 'Shop name required'),
-  nameUrdu: z.string().min(2, 'Shop name in Urdu required'),
-  description: z.string().min(10, 'Description should be at least 10 characters'),
+  name: z.string().trim().min(2, 'Shop name required'),
+  nameUrdu: z.string().trim().max(120, 'Urdu name is too long').optional(),
+  description: z.string().trim().min(10, 'Description should be at least 10 characters'),
   category: z.enum([
     'kiryana',
     'pharmacy',
@@ -40,22 +63,40 @@ const shopRegistrationSchema = z.object({
     'bakery',
     'general',
   ]),
-  phone: z.string().regex(/^\+92\d{10}$/, 'Valid phone required'),
-  address: z.string().min(5, 'Address required'),
-  city: z.string().min(2, 'City required'),
+  phone: z.string().trim().regex(PAK_PHONE_REGEX, 'Valid phone required'),
+  address: z.string().trim().min(5, 'Address required'),
+  city: z.string().trim().min(2, 'City required'),
 });
 
 type ShopFormData = z.infer<typeof shopRegistrationSchema>;
 
 export default function RegisterShopScreen() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const router = useRouter();
   const { user, setUser } = useAuthStore();
-  const { location, area, city } = useLocationStore();
-  const { refreshLocation, isLocating, permissionStatus } = useLocationViewModel();
+  const { location, area, city, setLocation, setArea, setLocating } = useLocationStore();
+  const { isLocating, permissionStatus } = useLocationViewModel();
 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMapVisible, setIsMapVisible] = useState(false);
+  const [step1Snapshot, setStep1Snapshot] = useState<{
+    name: string;
+    nameUrdu: string;
+    phone: string;
+  }>({
+    name: '',
+    nameUrdu: '',
+    phone: '',
+  });
+  const [mapInitialLocation, setMapInitialLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [mapSelectedLocation, setMapSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   // Protection: If user already has a shop, redirect to dashboard
   useEffect(() => {
@@ -76,19 +117,20 @@ export default function RegisterShopScreen() {
 
   const {
     control,
-    handleSubmit,
     watch,
+    getValues,
     setValue,
     trigger,
     formState: { errors },
   } = useForm<ShopFormData>({
     resolver: zodResolver(shopRegistrationSchema),
+    shouldUnregister: false,
     defaultValues: {
       name: '',
       nameUrdu: '',
       description: '',
       category: 'general',
-      phone: user?.phone || '',
+      phone: '',
       address: '',
       city: '',
     },
@@ -108,67 +150,104 @@ export default function RegisterShopScreen() {
     }
   }, [area, city, setValue, watch]);
 
-  const normalizePhone = (value: string): string => {
-    const digits = value.replace(/\D/g, '');
-    if (digits.startsWith('92')) {
-      return `+${digits.slice(0, 12)}`;
-    }
-    if (digits.startsWith('0')) {
-      return `+92${digits.slice(1, 11)}`;
-    }
-    return `+92${digits.slice(0, 10)}`;
-  };
-
   const handlePickLocation = useCallback(async () => {
     try {
-      // Check if permission is granted
-      if (permissionStatus !== 'granted') {
-        Alert.alert(
-          'Location Permission',
-          'This app needs location access to set your shop location. Please grant permission in the next step.',
-          [
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-            {
-              text: 'Grant Permission',
-              onPress: async () => {
-                try {
-                  await refreshLocation();
-                  Alert.alert('Success', 'Location captured successfully!');
-                } catch (error) {
-                  Alert.alert(
-                    'Permission Denied',
-                    'Please enable location permission in your device settings to set shop location.'
-                  );
-                }
-              },
-            },
-          ]
-        );
+      setLocating(true);
+
+      const status =
+        permissionStatus === 'granted'
+          ? 'granted'
+          : await requestLocationPermission();
+
+      if (status !== 'granted') {
+        Alert.alert('Location Permission', 'Please allow location permission to open the map picker.');
         return;
       }
 
-      // Permission granted, get location
-      await refreshLocation();
-      
-      // Show success message after location is captured
-      Alert.alert('Success', 'Location captured successfully!');
+      const coords = await getCurrentLocation();
+      if (!coords) {
+        Alert.alert('Location Error', 'Unable to fetch your current location. Please try again.');
+        return;
+      }
+
+      const startLocation = {
+        latitude: coords.lat,
+        longitude: coords.lng,
+      };
+
+      setMapInitialLocation(startLocation);
+      setMapSelectedLocation(startLocation);
+      setIsMapVisible(true);
     } catch (error) {
       console.error('Location pick error:', error);
       Alert.alert(
         'Location Error',
-        'Unable to get your location. Please check:\n\n1. Location permission is granted\n2. GPS/Location services are enabled\n3. You have internet connection'
+        'Unable to get your location. Please check location permission, GPS and internet connection.'
       );
+    } finally {
+      setLocating(false);
     }
-  }, [refreshLocation, permissionStatus]);
+  }, [permissionStatus, setLocating]);
+
+  const handleConfirmMapLocation = useCallback(async () => {
+    if (!mapSelectedLocation) {
+      Alert.alert('Location Required', 'Please place the marker on your shop location first.');
+      return;
+    }
+
+    setLocation(mapSelectedLocation.latitude, mapSelectedLocation.longitude);
+
+    try {
+      const areaName = await getAreaFromCoords(
+        mapSelectedLocation.latitude,
+        mapSelectedLocation.longitude
+      );
+
+      const parts = areaName.split(',').map((s) => s.trim());
+      const selectedArea = parts[0] || areaName;
+      const selectedCity = parts[1] || '';
+
+      setArea(selectedArea, selectedCity);
+
+      const currentAddress = getValues('address');
+      const currentCity = getValues('city');
+
+      if (!currentAddress || currentAddress.trim().length === 0) {
+        setValue('address', selectedArea, { shouldValidate: true });
+      }
+
+      if ((!currentCity || currentCity.trim().length === 0) && selectedCity) {
+        setValue('city', selectedCity, { shouldValidate: true });
+      }
+    } catch (error) {
+      console.error('Reverse geocode error:', error);
+    }
+
+    setIsMapVisible(false);
+    Alert.alert('Location Selected', 'Shop location selected from map successfully.');
+  }, [getValues, mapSelectedLocation, setArea, setLocation, setValue]);
 
   const handleNextStep = useCallback(async () => {
     let isStepValid = true;
 
     if (step === 1) {
-      isStepValid = await trigger(['name', 'nameUrdu', 'phone']);
+      const syncedName = (getValues('name') || '').trim();
+      const syncedNameUrdu = (getValues('nameUrdu') || '').trim();
+      const syncedPhone = normalizePhoneInput(getValues('phone') || '');
+
+      setValue('name', syncedName, { shouldValidate: true });
+      setValue('nameUrdu', syncedNameUrdu, { shouldValidate: false });
+      setValue('phone', syncedPhone, { shouldValidate: true });
+
+      isStepValid = await trigger(['name', 'phone']);
+
+      if (isStepValid) {
+        setStep1Snapshot({
+          name: syncedName,
+          nameUrdu: syncedNameUrdu,
+          phone: syncedPhone,
+        });
+      }
     }
 
     if (step === 2) {
@@ -191,7 +270,7 @@ export default function RegisterShopScreen() {
     if (step < 4) {
       setStep(step + 1);
     }
-  }, [step, trigger, location]);
+  }, [step, trigger, location, getValues, setValue]);
 
   const handlePreviousStep = useCallback(() => {
     if (step > 1) {
@@ -212,20 +291,28 @@ export default function RegisterShopScreen() {
 
     setIsLoading(true);
     try {
+      const cleanedPhone = normalizePhoneInput(data.phone || '');
+
+      if (!PAK_PHONE_REGEX.test(cleanedPhone)) {
+        setStep(1);
+        Alert.alert('Invalid Phone', 'Please enter a valid phone number in +92 format.');
+        return;
+      }
+
       const shopData: Omit<Shop, 'id' | 'createdAt' | 'updatedAt' | 'rating' | 'ratingCount' | 'totalViews' | 'todayViews' | 'whatsappClicks'> = {
-        name: data.name,
+        name: data.name.trim(),
         ownerName: user.name,
         ownerId: user.id,
         category: data.category as any,
-        whatsapp: normalizePhone(data.phone),
-        phone: normalizePhone(data.phone),
+        whatsapp: cleanedPhone,
+        phone: cleanedPhone,
         location: {
           latitude: location.lat,
           longitude: location.lng,
           geohash: '', // Will be calculated by service
-          address: data.address,
+          address: data.address.trim(),
           area: area || '',
-          city: data.city,
+          city: data.city.trim(),
         },
         photoUrl: null,
         isOpen: true,
@@ -281,28 +368,89 @@ export default function RegisterShopScreen() {
     }
   };
 
-  const onInvalidSubmit = (formErrors: FieldErrors<ShopFormData>) => {
-    // Jump to the first step that has an error so user can fix it quickly.
-    if (formErrors.name || formErrors.nameUrdu || formErrors.phone) {
-      setStep(1);
-      Alert.alert('Step 1 Incomplete', 'Please complete shop name and phone details.');
+  const handleFinalSubmit = useCallback(async () => {
+    const nameFromForm = (getValues('name') || '').trim();
+    const nameUrduFromForm = (getValues('nameUrdu') || '').trim();
+    const phoneFromForm = normalizePhoneInput(getValues('phone') || '');
+
+    const resolvedName = nameFromForm || step1Snapshot.name;
+    const resolvedNameUrdu = nameUrduFromForm || step1Snapshot.nameUrdu;
+    const resolvedPhone = phoneFromForm || step1Snapshot.phone;
+
+    const formSnapshot = {
+      name: resolvedName,
+      nameUrdu: resolvedNameUrdu,
+      description: (getValues('description') || '').trim(),
+      category: getValues('category') || 'general',
+      phone: resolvedPhone,
+      address: (getValues('address') || '').trim(),
+      city: (getValues('city') || '').trim(),
+    };
+
+    // Sync cleaned values back into form state.
+    setValue('name', formSnapshot.name, { shouldValidate: true });
+    setValue('nameUrdu', formSnapshot.nameUrdu, { shouldValidate: false });
+    setValue('description', formSnapshot.description, { shouldValidate: true });
+    setValue('category', formSnapshot.category as ShopFormData['category'], { shouldValidate: true });
+    setValue('phone', formSnapshot.phone, { shouldValidate: true });
+    setValue('address', formSnapshot.address, { shouldValidate: true });
+    setValue('city', formSnapshot.city, { shouldValidate: true });
+
+    const parsed = shopRegistrationSchema.safeParse(formSnapshot);
+    if (!parsed.success) {
+      const hasStep1Error = parsed.error.issues.some(
+        (issue) => issue.path[0] === 'name' || issue.path[0] === 'phone'
+      );
+      const hasStep2Error = parsed.error.issues.some(
+        (issue) => issue.path[0] === 'address' || issue.path[0] === 'city'
+      );
+      const hasStep3Error = parsed.error.issues.some(
+        (issue) => issue.path[0] === 'description' || issue.path[0] === 'category'
+      );
+
+      if (hasStep1Error) {
+        setStep(1);
+        Alert.alert('Step 1 Incomplete', t('owner.step1_incomplete'));
+        return;
+      }
+
+      if (hasStep2Error) {
+        setStep(2);
+        Alert.alert('Step 2 Incomplete', 'Please complete address, city, and pick location.');
+        return;
+      }
+
+      if (hasStep3Error) {
+        setStep(3);
+        Alert.alert('Step 3 Incomplete', 'Please select category and add description.');
+        return;
+      }
+
+      Alert.alert('Invalid Form', 'Please review all required fields and try again.');
       return;
     }
 
-    if (formErrors.address || formErrors.city) {
+    if (!location) {
       setStep(2);
-      Alert.alert('Step 2 Incomplete', 'Please complete address, city, and pick location.');
+      Alert.alert('Location Required', 'Please pick your shop location first.');
       return;
     }
 
-    if (formErrors.description || formErrors.category) {
-      setStep(3);
-      Alert.alert('Step 3 Incomplete', 'Please select category and add description.');
+    if (!parsed.data.name || !parsed.data.phone) {
+      setStep(1);
+      Alert.alert('Step 1 Incomplete', t('owner.step1_incomplete'));
       return;
     }
 
-    Alert.alert('Invalid Form', 'Please review all required fields and try again.');
-  };
+    // Keep snapshot updated with final cleaned values.
+    setStep1Snapshot({
+      name: parsed.data.name,
+      nameUrdu: parsed.data.nameUrdu || '',
+      phone: parsed.data.phone,
+    });
+
+    await onSubmit(parsed.data);
+  }, [getValues, location, onSubmit, setValue, step1Snapshot, t]);
 
   const renderStepContent = () => {
     switch (step) {
@@ -318,8 +466,11 @@ export default function RegisterShopScreen() {
               render={({ field }) => (
                 <TextInput
                   value={field.value}
-                  onChangeText={field.onChange}
-                  onBlur={field.onBlur}
+                  onChangeText={(text) => field.onChange(text)}
+                  onBlur={() => {
+                    field.onChange(field.value?.trim() ?? '');
+                    field.onBlur();
+                  }}
                   placeholder="Shop Name (English)"
                   placeholderTextColor="#9ca3af"
                   editable={!isLoading}
@@ -335,10 +486,13 @@ export default function RegisterShopScreen() {
               name="nameUrdu"
               render={({ field }) => (
                 <TextInput
-                  value={field.value}
+                  value={field.value || ''}
                   onChangeText={field.onChange}
-                  onBlur={field.onBlur}
-                  placeholder={t('owner.shop_name_urdu')}
+                  onBlur={() => {
+                    field.onChange(field.value?.trim() ?? '');
+                    field.onBlur();
+                  }}
+                  placeholder={`${t('owner.shop_name_urdu')} (${t('owner.optional')})`}
                   placeholderTextColor="#9ca3af"
                   editable={!isLoading}
                 />
@@ -355,12 +509,17 @@ export default function RegisterShopScreen() {
               name="phone"
               render={({ field }) => (
                 <TextInput
-                  value={field.value}
-                  onBlur={field.onBlur}
-                  onChangeText={(text) => field.onChange(normalizePhone(text))}
+                  value={field.value || ''}
+                  onBlur={() => {
+                    const normalized = normalizePhoneInput(field.value || '');
+                    field.onChange(normalized);
+                    field.onBlur();
+                  }}
+                  onChangeText={(text) => field.onChange(text)}
                   placeholder="+92 300 1234567"
                   placeholderTextColor="#9ca3af"
                   keyboardType="phone-pad"
+                  maxLength={16}
                   editable={!isLoading}
                 />
               )}
@@ -395,7 +554,7 @@ export default function RegisterShopScreen() {
                 longitude: location.lng,
                 address: area || 'Current location selected',
               } : undefined}
-              placeholder={isLocating ? 'Fetching location...' : 'Tap to pick shop location'}
+              placeholder={isLocating ? 'Fetching current location...' : 'Open map and place marker for shop location'}
             />
 
             <Controller
@@ -526,7 +685,8 @@ export default function RegisterShopScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-white p-4">
+    <>
+      <ScrollView className="flex-1 bg-white p-4">
       {/* Progress Indicator */}
       <View className="mb-6">
         <Text className="text-sm text-gray-600 mb-2">
@@ -571,13 +731,23 @@ export default function RegisterShopScreen() {
           <View className="flex-row items-center">
             <CustomButton
               title={isLoading ? 'Loading...' : 'Submit'}
-              onPress={handleSubmit(onSubmit, onInvalidSubmit)}
+              onPress={handleFinalSubmit}
               disabled={isLoading}
             />
             {isLoading && <ActivityIndicator color="#2563eb" style={{ marginLeft: 10 }} />}
           </View>
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+
+      <LocationMapModal
+        visible={isMapVisible}
+        initialLocation={mapInitialLocation}
+        selectedLocation={mapSelectedLocation}
+        onSelectLocation={setMapSelectedLocation}
+        onConfirm={handleConfirmMapLocation}
+        onClose={() => setIsMapVisible(false)}
+      />
+    </>
   );
 }

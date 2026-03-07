@@ -4,6 +4,10 @@ import {
     Inter_600SemiBold,
     Inter_700Bold,
 } from '@expo-google-fonts/inter';
+import {
+    registerNotificationResponseHandler,
+    registerPushTokenForUser,
+} from '@services/notificationService';
 import { initDB } from '@services/offlineService';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
@@ -155,6 +159,38 @@ export default function RootLayout() {
       }
     }
   }, [isAuthenticated, user, segments, isLoading, fontsLoaded, hasCompletedOnboarding]);
+
+  // Register push token once user is authenticated.
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) {
+      return;
+    }
+
+    registerPushTokenForUser(user.id).catch((error) => {
+      console.warn('Push registration warning:', (error as Error).message);
+    });
+  }, [isAuthenticated, user?.id]);
+
+  // Handle notification tap navigation.
+  useEffect(() => {
+    let cleanup: (() => void) | null = null;
+
+    registerNotificationResponseHandler((path) => {
+      router.push(path as any);
+    })
+      .then((remove) => {
+        cleanup = remove;
+      })
+      .catch((error) => {
+        console.warn('Notification response setup warning:', (error as Error).message);
+      });
+
+    return () => {
+      if (cleanup) {
+        cleanup();
+      }
+    };
+  }, [router]);
 
   // Show blank screen while fonts/auth loading
   if (!fontsLoaded || isLoading) {

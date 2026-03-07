@@ -11,6 +11,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Alert,
+    Platform,
     Pressable,
     ScrollView,
     Text,
@@ -332,11 +333,39 @@ export default function ResultsScreen() {
   };
 
   const handleDistancePress = () => {
+    if (Platform.OS !== 'android') {
+      Alert.alert(t('customer.select_distance'), t('customer.select_search_range'), [
+        { text: '1 km', onPress: () => updateRadius(1) },
+        { text: '2 km', onPress: () => updateRadius(2) },
+        { text: '5 km', onPress: () => updateRadius(5) },
+        { text: '10 km', onPress: () => updateRadius(10) },
+        { text: '20 km', onPress: () => updateRadius(20) },
+        { text: '30 km', onPress: () => updateRadius(30) },
+        { text: '50 km', onPress: () => updateRadius(50) },
+        { text: t('common.cancel'), style: 'cancel' },
+      ]);
+      return;
+    }
+
     Alert.alert(t('customer.select_distance'), t('customer.select_search_range'), [
-      { text: '1 km', onPress: () => updateRadius(1) },
-      { text: '2 km', onPress: () => updateRadius(2) },
-      { text: '5 km', onPress: () => updateRadius(5) },
-      { text: '10 km', onPress: () => updateRadius(10) },
+      {
+        text: '1-5 km',
+        onPress: () =>
+          Alert.alert(t('customer.select_distance'), '', [
+            { text: '1 km', onPress: () => updateRadius(1) },
+            { text: '2 km', onPress: () => updateRadius(2) },
+            { text: '5 km', onPress: () => updateRadius(5) },
+          ]),
+      },
+      {
+        text: '10-50 km',
+        onPress: () =>
+          Alert.alert(t('customer.select_distance'), '', [
+            { text: '10 km', onPress: () => updateRadius(10) },
+            { text: '20 km', onPress: () => updateRadius(20) },
+            { text: '50 km', onPress: () => updateRadius(50) },
+          ]),
+      },
       { text: t('common.cancel'), style: 'cancel' },
     ]);
   };

@@ -1,11 +1,42 @@
 // Notification Service for DukandaR
 import { Deal } from '@models/Deal';
+import { NotificationType } from '@models/Notification';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 // Lazy load notifications only when needed to avoid Expo Go issues
 let NotificationsModule: typeof import('expo-notifications') | null = null;
 let notificationHandlerSetup = false;
+const EXPO_PUSH_ENDPOINT = 'https://exp.host/--/api/v2/push/send';
+
+interface PushDataPayload {
+  [key: string]: string | number | boolean | null;
+}
+
+interface NotifyUserInput {
+  userId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  actionUrl?: string | null;
+  shopId?: string | null;
+  productName?: string | null;
+  pushData?: PushDataPayload;
+}
+
+interface NotificationNavigationData {
+  actionUrl?: string;
+}
+
+interface ExpoPushMessage {
+  to: string;
+  title: string;
+  body: string;
+  data?: PushDataPayload;
+  sound?: 'default';
+  channelId?: string;
+  priority?: 'default' | 'normal' | 'high';
+}
 
 async function getNotificationsModule() {
   if (NotificationsModule === null) {
@@ -94,6 +125,36 @@ export async function requestPermission(): Promise<boolean> {
 }
 
 /**
+ * Register tap handler for push/local notification interactions.
+ * Returns cleanup function for listener removal.
+ */
+export async function registerNotificationResponseHandler(
+  onNavigate: (path: string) => void
+): Promise<(() => void) | null> {
+  try {
+    const Notifications = await getNotificationsModule();
+    if (!Notifications) return null;
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data as NotificationNavigationData | undefined;
+        const actionUrl = data?.actionUrl;
+        if (actionUrl && typeof actionUrl === 'string') {
+          onNavigate(actionUrl);
+        }
+      }
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  } catch (error) {
+    console.warn('Register notification response handler warning:', (error as Error).message);
+    return null;
+  }
+}
+
+/**
  * Get Expo push token (for production)
  * @returns Push token or null
  */
@@ -136,6 +197,179 @@ export async function getExpoPushToken(): Promise<string | null> {
     console.warn('Get Expo push token warning:', (error as Error).message);
     return null;
   }
+}
+
+/**
+ * Register and persist Expo push token for a user.
+ * Safe to call repeatedly (uses arrayUnion for dedupe on token list).
+ */
+export async function registerPushTokenForUser(
+  userId: string
+): Promise<string | null> {
+  try {
+    if (!userId) return null;
+
+    const granted = await requestPermission();
+    if (!granted) return null;
+
+    const token = await getExpoPushToken();
+    if (!token) return null;
+
+    const { doc, updateDoc, arrayUnion, serverTimestamp } = await import(
+      'firebase/firestore'
+    );
+    const { db } = await import('@services/firebase');
+
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      expoPushToken: token,
+      expoPushTokens: arrayUnion(token),
+      pushEnabled: true,
+      pushTokenUpdatedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return token;
+  } catch (error) {
+    console.warn(
+      'Register push token warning:',
+      (error as Error).message
+    );
+    return null;
+  }
+}
+
+/**
+ * Write notification document into Firestore notification inbox.
+ */
+export async function createInAppNotification(
+  input: NotifyUserInput
+): Promise<void> {
+  try {
+    const { addDoc, collection, serverTimestamp } = await import(
+      'firebase/firestore'
+    );
+    const { db } = await import('@services/firebase');
+
+    await addDoc(collection(db, 'notifications'), {
+      userId: input.userId,
+      type: input.type,
+      title: input.title,
+      body: input.body,
+      shopId: input.shopId ?? null,
+      productName: input.productName ?? null,
+      actionUrl: input.actionUrl ?? null,
+      read: false,
+      createdAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('Create in-app notification error:', error);
+  }
+}
+
+/**
+ * Create notification inbox item and send push to the target user's known devices.
+ */
+export async function notifyUser(input: NotifyUserInput): Promise<void> {
+  try {
+    await createInAppNotification(input);
+
+    const { doc, getDoc } = await import('firebase/firestore');
+    const { db } = await import('@services/firebase');
+
+    const userRef = doc(db, 'users', input.userId);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) return;
+
+    const userData = userSnap.data() as {
+      expoPushToken?: string | null;
+      expoPushTokens?: unknown;
+      pushEnabled?: boolean;
+    };
+
+    if (userData.pushEnabled === false) return;
+
+    const tokens = extractExpoTokens(userData.expoPushToken, userData.expoPushTokens);
+    if (tokens.length === 0) return;
+
+    await sendPushToTokens(tokens, input.title, input.body, input.pushData);
+  } catch (error) {
+    console.error('Notify user error:', error);
+  }
+}
+
+/**
+ * Send push message to one or more Expo push tokens.
+ */
+export async function sendPushToTokens(
+  tokens: string[],
+  title: string,
+  body: string,
+  data?: PushDataPayload
+): Promise<void> {
+  try {
+    const uniqueTokens = Array.from(new Set(tokens.filter((token) => token.startsWith('ExponentPushToken['))));
+    if (uniqueTokens.length === 0) return;
+
+    const messages: ExpoPushMessage[] = uniqueTokens.map((token) => ({
+      to: token,
+      title,
+      body,
+      data,
+      sound: 'default',
+      priority: 'high',
+      channelId: Platform.OS === 'android' ? 'default' : undefined,
+    }));
+
+    const chunks = chunkArray(messages, 100);
+    for (const chunk of chunks) {
+      const response = await fetch(EXPO_PUSH_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Accept-encoding': 'gzip, deflate',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(chunk),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.warn('Expo push send warning:', response.status, text);
+      }
+    }
+  } catch (error) {
+    console.error('Send push to tokens error:', error);
+  }
+}
+
+function extractExpoTokens(
+  singleToken?: string | null,
+  tokenList?: unknown
+): string[] {
+  const tokens = new Set<string>();
+
+  if (singleToken && typeof singleToken === 'string') {
+    tokens.add(singleToken);
+  }
+
+  if (Array.isArray(tokenList)) {
+    for (const token of tokenList) {
+      if (typeof token === 'string') {
+        tokens.add(token);
+      }
+    }
+  }
+
+  return Array.from(tokens);
+}
+
+function chunkArray<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size));
+  }
+  return chunks;
 }
 
 /**

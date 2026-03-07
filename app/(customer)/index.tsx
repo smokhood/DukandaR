@@ -64,6 +64,45 @@ export default function CustomerHome() {
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [refreshing, setRefreshing] = useState(false);
 
+  const showRadiusSelector = useCallback(() => {
+    if (Platform.OS !== 'android') {
+      Alert.alert(t('customer.select_search_range'), '', [
+        { text: '1 km', onPress: () => updateRadius(1) },
+        { text: '2 km', onPress: () => updateRadius(2) },
+        { text: '5 km', onPress: () => updateRadius(5) },
+        { text: '10 km', onPress: () => updateRadius(10) },
+        { text: '20 km', onPress: () => updateRadius(20) },
+        { text: '30 km', onPress: () => updateRadius(30) },
+        { text: '50 km', onPress: () => updateRadius(50) },
+        { text: t('common.cancel'), style: 'cancel' },
+      ]);
+      return;
+    }
+
+    // Android Alert supports only up to 3 buttons, so show grouped options.
+    Alert.alert(t('customer.select_search_range'), 'Choose distance group', [
+      {
+        text: '1-5 km',
+        onPress: () =>
+          Alert.alert(t('customer.select_search_range'), '', [
+            { text: '1 km', onPress: () => updateRadius(1) },
+            { text: '2 km', onPress: () => updateRadius(2) },
+            { text: '5 km', onPress: () => updateRadius(5) },
+          ]),
+      },
+      {
+        text: '10-50 km',
+        onPress: () =>
+          Alert.alert(t('customer.select_search_range'), '', [
+            { text: '10 km', onPress: () => updateRadius(10) },
+            { text: '20 km', onPress: () => updateRadius(20) },
+            { text: '50 km', onPress: () => updateRadius(50) },
+          ]),
+      },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+  }, [t, updateRadius]);
+
   // Handle search submit
   const handleSearch = useCallback((searchQuery: string) => {
     if (searchQuery.trim()) {
@@ -198,15 +237,7 @@ export default function CustomerHome() {
 
         {/* Radius Selector */}
         <Pressable
-          onPress={() => {
-            Alert.alert(t('customer.select_search_range'), '', [
-              { text: '1 km', onPress: () => updateRadius(1) },
-              { text: '2 km', onPress: () => updateRadius(2) },
-              { text: '5 km', onPress: () => updateRadius(5) },
-              { text: '10 km', onPress: () => updateRadius(10) },
-              { text: t('common.cancel'), style: 'cancel' },
-            ]);
-          }}
+          onPress={showRadiusSelector}
           className="flex-row items-center self-end mt-2"
         >
           <Text className="text-white text-sm">{radius} km</Text>

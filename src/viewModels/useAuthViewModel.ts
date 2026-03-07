@@ -18,10 +18,12 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
+import { useLanguageStore } from '../store/languageStore';
 
 export function useAuthViewModel() {
   const router = useRouter();
   const { setUser, setLoading, clearUser: clearAuthStore } = useAuthStore();
+  const selectedLanguage = useLanguageStore((state) => state.language);
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -140,7 +142,7 @@ export function useAuthViewModel() {
             shopId: null,
             savedShops: [],
             isOnboarded: false,
-            preferredLanguage: 'ur',
+            preferredLanguage: selectedLanguage,
             createdAt: new Date() as any,
             updatedAt: new Date() as any,
           };

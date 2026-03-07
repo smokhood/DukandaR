@@ -26,6 +26,14 @@ export interface User {
   isOnboarded: boolean;
   /** User's preferred language */
   preferredLanguage: 'en' | 'ur';
+  /** Most recent Expo push token for this user */
+  expoPushToken?: string | null;
+  /** All known Expo push tokens (multi-device support) */
+  expoPushTokens?: string[];
+  /** Whether user has enabled push notifications */
+  pushEnabled?: boolean;
+  /** Last push token refresh timestamp */
+  pushTokenUpdatedAt?: Timestamp;
   /** Account creation timestamp */
   createdAt: Timestamp;
   /** Last update timestamp */

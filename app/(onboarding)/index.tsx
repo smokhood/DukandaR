@@ -8,7 +8,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
     Dimensions,
     FlatList,
@@ -16,6 +16,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useLanguage } from '../../src/hooks/useLanguage';
 import { useAuthStore } from '../../src/store/authStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -24,48 +25,46 @@ interface OnboardingSlide {
   id: string;
   title: string;
   description: string;
-  icon: string;
-  illustration: React.ReactNode;
+  icon: keyof typeof Ionicons.glyphMap;
 }
-
-const slides: OnboardingSlide[] = [
-  {
-    id: '1',
-    title: 'اپنی گلی کی دکانیں ڈھونڈیں',
-    description: 'گھر کے قریب کی تمام دکانیں ایک جگہ دیکھیں',
-    icon: 'map',
-    illustration: <View className="w-24 h-24 bg-green-100 rounded-full items-center justify-center mb-4">
-      <Ionicons name="map" size={48} color="#16a34a" />
-    </View>,
-  },
-  {
-    id: '2',
-    title: 'قیمت موازنہ کریں',
-    description:
-      'ایک ہی چیز مختلف دکانوں میں کتنے کی ہے؟ بہترین قیمت پر خریدیں',
-    icon: 'search',
-    illustration: <View className="w-24 h-24 bg-blue-100 rounded-full items-center justify-center mb-4">
-      <Ionicons name="search" size={48} color="#2563eb" />
-    </View>,
-  },
-  {
-    id: '3',
-    title: 'واٹس ایپ پر آرڈر کریں',
-    description:
-      'دکاندار کو براہ راست واٹس ایپ پر تیار پیغام بھیجیں',
-    icon: 'logo-whatsapp',
-    illustration: <View className="w-24 h-24 bg-green-100 rounded-full items-center justify-center mb-4">
-      <Ionicons name="logo-whatsapp" size={48} color="#16a34a" />
-    </View>,
-  },
-];
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const { user, markOnboarded } = useAuthStore();
+  const { t, setLanguage } = useLanguage();
   const flatListRef = useRef<FlatList>(null);
   const [activeSlide, setActiveSlide] = useState(0);
   const [isCompleting, setIsCompleting] = useState(false);
+
+  const slides: OnboardingSlide[] = useMemo(
+    () => [
+      {
+        id: '1',
+        title: t('onboarding.slide1_title'),
+        description: t('onboarding.slide1_desc'),
+        icon: 'map',
+      },
+      {
+        id: '2',
+        title: t('onboarding.slide2_title'),
+        description: t('onboarding.slide2_desc'),
+        icon: 'search',
+      },
+      {
+        id: '3',
+        title: t('onboarding.slide3_title'),
+        description: t('onboarding.slide3_desc'),
+        icon: 'logo-whatsapp',
+      },
+    ],
+    [t]
+  );
+
+  const getIllustrationColor = (icon: OnboardingSlide['icon']) =>
+    icon === 'search' ? '#2563eb' : '#16a34a';
+
+  const getIllustrationBg = (icon: OnboardingSlide['icon']) =>
+    icon === 'search' ? 'bg-blue-100' : 'bg-green-100';
 
   const handleNext = useCallback(() => {
     if (activeSlide < slides.length - 1) {
@@ -117,7 +116,9 @@ export default function OnboardingScreen() {
 
   const renderSlide = ({ item }: { item: OnboardingSlide }) => (
     <View style={{ width: SCREEN_WIDTH }} className="h-full bg-white items-center justify-center px-6">
-      {item.illustration}
+      <View className={`w-24 h-24 ${getIllustrationBg(item.icon)} rounded-full items-center justify-center mb-4`}>
+        <Ionicons name={item.icon} size={48} color={getIllustrationColor(item.icon)} />
+      </View>
       <Text className="text-3xl font-bold text-gray-900 text-center mb-4">
         {item.title}
       </Text>
@@ -136,7 +137,7 @@ export default function OnboardingScreen() {
             onPress={handleSkip}
             disabled={isCompleting}
           >
-            <Text className="text-sm font-medium text-gray-600">چھوڑیں</Text>
+            <Text className="text-sm font-medium text-gray-600">{t('onboarding.skip')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -178,7 +179,7 @@ export default function OnboardingScreen() {
             className="bg-green-600 rounded-lg py-4 flex-row items-center justify-center"
           >
             <Text className="text-white font-semibold text-base">
-              شروع کریں
+              {t('onboarding.get_started')}
             </Text>
             <Text className="text-white ml-2">✓</Text>
           </TouchableOpacity>
@@ -187,18 +188,18 @@ export default function OnboardingScreen() {
             onPress={handleNext}
             className="bg-green-600 rounded-lg py-4 flex-row items-center justify-center"
           >
-            <Text className="text-white font-semibold text-base">اگلا</Text>
+            <Text className="text-white font-semibold text-base">{t('onboarding.next')}</Text>
             <Text className="text-white ml-2">→</Text>
           </TouchableOpacity>
         )}
 
         {/* Language Toggle */}
         <View className="flex-row justify-center mt-4">
-          <TouchableOpacity className="px-3 py-2">
+          <TouchableOpacity className="px-3 py-2" onPress={() => setLanguage('en')}>
             <Text className="text-sm text-green-600 font-medium">English</Text>
           </TouchableOpacity>
           <Text className="text-gray-400">/</Text>
-          <TouchableOpacity className="px-3 py-2">
+          <TouchableOpacity className="px-3 py-2" onPress={() => setLanguage('ur')}>
             <Text className="text-sm text-green-600 font-medium">اردو</Text>
           </TouchableOpacity>
         </View>

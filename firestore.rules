@@ -107,15 +107,15 @@ service cloud.firestore {
     match /notifications/{notificationId} {
       // Users can only read their own notifications
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      
-      // System can create notifications
-      allow create: if isAuthenticated();
+
+      // Notifications are created by backend (Admin SDK bypasses rules)
+      allow create: if false;
       
       // Users can update their own notifications (mark as read)
       allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      
-      // No deletes
-      allow delete: if false;
+
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     // Orders collection
