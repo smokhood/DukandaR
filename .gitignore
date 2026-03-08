@@ -52,3 +52,35 @@ GoogleService-Info.plist
 
 # trashfolder (local reference only)
 assets/trashfolder/
+
+# Local development notes & output files
+lint-output.txt
+tsc-output.txt
+ORDER_FLOW_*.md
+PERMISSION_ERROR_*.md
+TESTING_*.md
+*.log
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS temp files
+Thumbs.db
+.DS_Store
+*.tmp
+
+# Build artifacts
+dist/
+build/
+*.o
+*.a
+*.so
+*.dylib
+
+# Package manager lock files (optional - uncomment if needed)
+# package-lock.json
+# yarn.lock
