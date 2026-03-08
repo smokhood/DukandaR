@@ -44,8 +44,9 @@ export function useAuthViewModel() {
   const [countdown, setCountdown] = useState(0);
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
 
-  const isPhoneAuthTestMode =
-    __DEV__ && process.env.EXPO_PUBLIC_FIREBASE_PHONE_AUTH_TESTING === 'true';
+  // In EAS preview/internal builds, __DEV__ is false.
+  // Respect the Expo public env flag so Firebase test phone numbers work there too.
+  const isPhoneAuthTestMode = process.env.EXPO_PUBLIC_FIREBASE_PHONE_AUTH_TESTING === 'true';
 
   // Countdown timer for resend OTP
   useEffect(() => {
