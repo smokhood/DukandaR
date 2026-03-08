@@ -318,81 +318,21 @@ eas submit
 
 ### Firebase Cloud Functions Deploy
 ```bash
-cd functions
-npm run build
-firebase deploy --only functions
+npm run reset-project
 ```
 
----
+This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
-## 📊 Performance Optimizations
+## Learn more
 
-- **Pagination**: Infinite scroll for shops & search results (avoids loading all data at once)
-- **Caching**: React Query + SQLite for smart data reuse
-- **Lazy Loading**: Components and services loaded on-demand
-- **Image Optimization**: Expo Image with responsive sizing
-- **Animation Performance**: React Native Reanimated for 60fps animations
+To learn more about developing your project with Expo, look at the following resources:
 
----
+- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
+- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-## 🤝 Contributing
+## Join the community
 
-Contributions are welcome! Please follow these steps:
+Join our community of developers creating universal apps.
 
-1. **Fork** the repository
-2. **Create a feature branch**: `git checkout -b feature/your-feature-name`
-3. **Commit changes**: `git commit -m "Add your feature"`
-4. **Push to branch**: `git push origin feature/your-feature-name`
-5. **Open a Pull Request**
-
-### Code Standards
-- Use **TypeScript** for all new code
-- Follow **ESLint** rules (run `npm run lint`)
-- Write meaningful commit messages
-- Test feature locally before submitting PR
-
----
-
-## 🐛 Known Issues & Limitations
-
-- Push notifications require development build (not available in Expo Go on Android)
-- Phone authentication requires real app or Firebase Emulator setup
-- Maps require valid location permissions on device
-
----
-
-## 📝 License
-
-This project is licensed under the **MIT License** - see [LICENSE](LICENSE) file for details.
-
----
-
-## 👨‍💻 Author
-
-**Your Name**
-- GitHub: [@yourusername](https://github.com/yourusername)
-- Email: your.email@example.com
-
----
-
-## 📞 Support
-
-For issues and questions:
-- Open an [GitHub Issue](https://github.com/yourusername/shopwala/issues)
-- Check [existing issues](https://github.com/yourusername/shopwala/issues) first
-- Contact via email
-
----
-
-## 🙏 Acknowledgments
-
-- [React Native](https://reactnative.dev/) - Mobile framework
-- [Expo](https://expo.dev/) - Development platform
-- [Firebase](https://firebase.google.com/) - Backend services
-- [TanStack Query](https://tanstack.com/query) - Data fetching
-- [Tailwind CSS](https://tailwindcss.com/) - Styling
-
----
-
-**Last Updated**: March 2026  
-**Version**: 1.0.0
+- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
+- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
