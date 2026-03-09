@@ -1,5 +1,7 @@
 # ShopWala - Hyperlocal Commerce Platform
 
+![MyApp Logo](assets/images/icon.png)
+
 A cross-platform React Native marketplace app connecting local shop owners with nearby customers through GPS-based discovery, real-time ordering, and seamless communication.
 
 ![ShopWala](https://img.shields.io/badge/React%20Native-Expo-blue?style=for-the-badge&logo=react) ![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
